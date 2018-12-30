@@ -72,7 +72,7 @@ module.exports = function EasyFishing(mod) {
 
     function validate(value, lowerBound, upperBound, defaultValue) {
 		
-		command.message("validate");
+		//command.message("validate");
 		
     	value = parseInt(value);
     	if (isNaN(value)) {
@@ -89,7 +89,7 @@ module.exports = function EasyFishing(mod) {
 
     command.add('usebait', {
     	$default() {
-			command.message("sending bait 4");
+			//command.message("sending bait 4");
 			mod.toServer('C_USE_ITEM', 3, { // use_bait_item() NOT WORKING SOMETIMES
 				gameId,
 				id: 206003,
@@ -110,16 +110,8 @@ module.exports = function EasyFishing(mod) {
 	
 	command.add('startfishing', {
     	$default() {
-			command.message("startfishing");
+			//command.message("startfishing");
 			startFishing();
-			
-    	}
-	});
-	
-	command.add('cancelFishingMaybe', {
-    	$default() {
-			command.message("cancelFishingMaybe");
-			cancelFishingMaybe();
 			
     	}
 	});
@@ -167,7 +159,7 @@ module.exports = function EasyFishing(mod) {
 
 	function startCraftingBait() { // use_bait_item()
 		
-		command.message("startCraftingBait");
+		//command.message("startCraftingBait");
 		
 		if (!crafting) {
 			successCount = 0;
@@ -180,7 +172,7 @@ module.exports = function EasyFishing(mod) {
     }
 
     function startFishing() { // throw_the_rod()
-		command.message("startFishing");
+		//command.message("startFishing");
 		
 		if(pendingDeals.length){
 			command.message("startFishing Lets address suggested deals and give it some time...");
@@ -193,7 +185,7 @@ module.exports = function EasyFishing(mod) {
 			timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
 		} else {
 			negoWaiting = false;
-			command.message("Throwing Rod~~");
+			//command.message("Throwing Rod~~");
 			mod.toServer('C_USE_ITEM', 3, {
 				gameId,
 				id: fishingRod,
@@ -208,51 +200,12 @@ module.exports = function EasyFishing(mod) {
 				unk3: 0,
 				unk4: true
 			});
-		}
-    }
-	
-	function cancelFishingMaybe(){ 
-		command.message("cancelFishingMaybe");
-		
-		if(pendingDeals.length){
-			command.message("Canceling Rod~~");
-			mod.toServer('C_USE_ITEM', 3, {
-				gameId,
-				id: fishingRod,
-				dbid: 0,
-				target: 0,
-				amount: 1,
-				dest: 0,
-				loc: playerLocation,
-				w: playerAngle,
-				unk1: 0,
-				unk2: 0,
-				unk3: 0,
-				unk4: true
-			});
-			
-			timer = setTimeout(() => {
-    			command.message("cancelFishingMaybe Lets address suggested deals and give it some time...");
-				
-				for(let i = 0; i < pendingDeals.length; i++){
-					mod.toClient('S_TRADE_BROKER_DEAL_SUGGESTED', 1, pendingDeals[i]);
-					pendingDeals.splice(i--, 1);
-				}
-				negoWaiting = true;
-				timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
-				
-    		}, 3000);
-			
-		} else {
-			
-			command.message("Lets keep fishing...");
-			
 		}
     }
 
     function startDismantling() {
 		
-		command.message("startDismantling");
+		//command.message("startDismantling");
 		
     	itemsToProcess = [];
     	waitingInventory = true;
@@ -262,7 +215,7 @@ module.exports = function EasyFishing(mod) {
 
     function startSelling() {
 		
-		command.message("startSelling");
+		//command.message("startSelling");
 		
     	if (lastContact.gameId && lastDialog.id) {
 	        itemsToProcess = [];
@@ -281,7 +234,7 @@ module.exports = function EasyFishing(mod) {
 
     function startDiscarding() {
 		
-		command.message("startDiscarding");
+		//command.message("startDiscarding");
 		
     	discarding = true;
     	mod.toServer('C_SHOW_INVEN', 1, {unk: 1});
@@ -289,7 +242,7 @@ module.exports = function EasyFishing(mod) {
 
     function processItemsToDismantle() {
 		
-		command.message("processItemsToDismantle");
+		//command.message("processItemsToDismantle");
 		
     	if (itemsToProcess.length > 0) {
     		mod.toServer('C_REQUEST_CONTRACT', 1, {
@@ -307,7 +260,7 @@ module.exports = function EasyFishing(mod) {
 
     function processItemsToSell() {
 		
-		command.message("processItemsToSell");
+		//command.message("processItemsToSell");
 		
     	if (itemsToProcess.length > 0) {
     		mod.toServer('C_NPC_CONTACT', 2, lastContact);
@@ -338,21 +291,21 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('C_NPC_CONTACT', 2, event => {
 		
-		command.message("C_NPC_CONTACT");
+		//command.message("C_NPC_CONTACT");
 		
     	Object.assign(lastContact, event);
     });
 
     mod.hook('C_DIALOG', 1, event => {
 		
-		command.message("C_DIALOG");
+		//command.message("C_DIALOG");
 		
     	Object.assign(lastDialog, event);
     });
 
     mod.hook('C_CAST_FISHING_ROD', 'raw', (code, data) => {
 		
-		command.message("C_CAST_FISHING_ROD");
+		//command.message("C_CAST_FISHING_ROD");
 		
     	data[20] = validate(mod.settings.castDistance, 0, 18, 3);
     	return true;
@@ -360,7 +313,7 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('S_END_PRODUCE', 1, event => {
 		
-		command.message("S_END_PRODUCE");
+		//command.message("S_END_PRODUCE");
 		
     	if (crafting) {
 			if (event.success) {
@@ -369,7 +322,7 @@ module.exports = function EasyFishing(mod) {
 			} else {
 				crafting = false;
 				
-				command.message("Done Crafting, success# = " + successCount);
+				//command.message("Done Crafting, success# = " + successCount);
 				
 				if (successCount == 0) {
 					if (mod.settings.autoDismantling) {
@@ -379,7 +332,7 @@ module.exports = function EasyFishing(mod) {
 					}
 				} else {
 					if(currentBait == null){
-						command.message("currentBait == null");
+						//command.message("currentBait == null");
 						currentBait = lastBait;
 					}
 					
@@ -403,14 +356,14 @@ module.exports = function EasyFishing(mod) {
 					});
 					mod.setTimeout(() => {
 						if(currentBait){
-							command.message("S_END_PRODUCE, currentBait = " + currentBait.itemId);
+							//command.message("S_END_PRODUCE, currentBait = " + currentBait.itemId);
 						} else{
-							command.message("S_END_PRODUCE, currentBait = null");
+							//command.message("S_END_PRODUCE, currentBait = null");
 						}
 						if(lastBait){
-							command.message("S_END_PRODUCE, lastBait = " + lastBait.itemId);
+							//command.message("S_END_PRODUCE, lastBait = " + lastBait.itemId);
 						} else{
-							command.message("S_END_PRODUCE, lastBait = null");
+							//command.message("S_END_PRODUCE, lastBait = null");
 						}
 						
 						if (currentBait) {
@@ -426,7 +379,7 @@ module.exports = function EasyFishing(mod) {
 
 	mod.hook('S_REQUEST_CONTRACT', 1, event => {
 		
-		command.message("S_REQUEST_CONTRACT");
+		//command.message("S_REQUEST_CONTRACT");
 		
 		if (dismantling || selling) {
 			if (event.type == 89) {
@@ -518,7 +471,7 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('S_INVEN', 16, event => {
 		
-		command.message("S_INVEN");
+		//command.message("S_INVEN");
 		
     	if (!dismantling && !selling && !discarding) return;
 
@@ -562,14 +515,14 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('S_LOGIN', 10, event => {
 		
-		command.message("S_LOGIN");
+		//command.message("S_LOGIN");
 		
         ({gameId} = event);
     });
 
     mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
 		
-		command.message("S_FISHING_BITE");
+		//command.message("S_FISHING_BITE");
 		
         if (!mod.settings.enabled) return;
 
@@ -585,7 +538,7 @@ module.exports = function EasyFishing(mod) {
 
 	mod.hook('S_CAST_FISHING_ROD', 'raw', (code, data) => {
 		
-		command.message("S_CAST_FISHING_ROD");
+		//command.message("S_CAST_FISHING_ROD");
 		
         const stream = new Readable(data);
         stream.position = 4;
@@ -597,7 +550,7 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('S_START_FISHING_MINIGAME', 'raw', (code, data) => {
 		
-		command.message("S_START_FISHING_MINIGAME");
+		//command.message("S_START_FISHING_MINIGAME");
 		
         if (!mod.settings.enabled) return;
 		
@@ -615,7 +568,7 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('C_USE_ITEM', 3, event => {
 		
-		command.message("C_USE_ITEM");
+		//command.message("C_USE_ITEM");
 		//console.log("C_USE_ITEM");
 		//let tempevent = event;
 		//loopBigIntToString(tempevent);
@@ -662,7 +615,7 @@ module.exports = function EasyFishing(mod) {
 
 	mod.hook('C_PLAYER_LOCATION', 5, event => {
 		
-		command.message("C_PLAYER_LOCATION");
+		//command.message("C_PLAYER_LOCATION");
 		
 		//if ([0, 1, 5, 6].includes(event.type)) { // u fking troll made me waste hours to figure out that you did this dumb shit
 		if (true) {
@@ -679,14 +632,14 @@ module.exports = function EasyFishing(mod) {
     		lastBait = currentBait || lastBait;
 			
 			if(currentBait){
-				command.message("S_ABNORMALITY_BEGIN, currentBait = " + currentBait.itemId);
+				//command.message("S_ABNORMALITY_BEGIN, currentBait = " + currentBait.itemId);
 			} else{
-				command.message("S_ABNORMALITY_BEGIN, currentBait = null");
+				//command.message("S_ABNORMALITY_BEGIN, currentBait = null");
 			}
 			if(lastBait){
-				command.message("S_ABNORMALITY_BEGIN, lastBait = " + lastBait.itemId);
+				//command.message("S_ABNORMALITY_BEGIN, lastBait = " + lastBait.itemId);
 			} else{
-				command.message("S_ABNORMALITY_BEGIN, lastBait = null");
+				//command.message("S_ABNORMALITY_BEGIN, lastBait = null");
 			}
     	}
     });
@@ -701,15 +654,15 @@ module.exports = function EasyFishing(mod) {
     	}
 		
 		if(currentBait){
-			command.message("S_ABNORMALITY_END, currentBait = " + currentBait.itemId);
+			//command.message("S_ABNORMALITY_END, currentBait = " + currentBait.itemId);
 		} else{
-			command.message("S_ABNORMALITY_END, currentBait = null");
+			//command.message("S_ABNORMALITY_END, currentBait = null");
 		}
     });
 
     mod.hook('S_SYSTEM_MESSAGE', 1, event => {
 		
-		command.message("S_SYSTEM_MESSAGE");
+		//command.message("S_SYSTEM_MESSAGE");
 		
     	if (!mod.settings.enabled) return;
     	
@@ -785,7 +738,7 @@ module.exports = function EasyFishing(mod) {
 	
 	mod.hook('S_TRADE_BROKER_DEAL_SUGGESTED', 1, event => {
 		
-		command.message("S_TRADE_BROKER_DEAL_SUGGESTED");
+		//command.message("S_TRADE_BROKER_DEAL_SUGGESTED");
 		
 		
 		if(mod.settings.enabled && hasNego && !negoWaiting && event.offeredPrice === event.sellerPrice){ // lets take a break and trade shall we? // enabled && !amFishing &&
