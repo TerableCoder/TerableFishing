@@ -732,6 +732,10 @@ module.exports = function EasyFishing(mod) {
 			}
 			
 			
+			// TODO: Add Stop() command that activates something similiar to 
+			// else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && !pendingDeals.length){ // hmmm?
+			// but is reliant on a boolean var = stopping to activate and reverts after actually stopping.
+			
     	}
     });
 
