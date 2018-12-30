@@ -1,0 +1,13 @@
+{
+    "disableAutoUpdate": false,
+    "name": "easy-fishing",
+    "author": "KTC",
+    "description": "NextGen easy-fishing. Module to auto fish",
+    "version": "4.0",
+    "options": {
+        "settingsVersion": 4,
+        "settingsFile": "config.json",
+        "settingsMigrator": "settings_migrator.js"
+    },
+    "servers": [""]
+}

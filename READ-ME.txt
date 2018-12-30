@@ -1,0 +1,14 @@
+Move the files inside "defs" folder to the folder node_modules/tera-data/protocol.
+
+Also for NA/EU/SEA/TW download the files according to your server from #opcodes and move it to node_modules/tera-data/map. (or merge their contents if you already have custom opcodes.)
+
+Commands:
+!easyfishing - Toggles the module on and off.
+!easyfishing craft - Toggles auto bait crafting.
+!easyfishing dismantle - Toggles auto fish dismantling.
+!easyfishing delay - Toggles random delay for catching and adding items to dismantle ui.
+!easyfishing distance [0, 18] - Sets cast distance from 0 to 18 (Keep in mind, anything above 3 is not possible without a module.)
+!easyfishing sell - Toggles auto selling (You have to be close to a merchant, and open it's selling UI before fishing.)
+!easyfishing discard - Toggles discarding fish filets when reaching 10k.
+!easyfishing discard XXXX - Set the amount of fish filets to discard.
+!easyfishing salad - Toggles auto reuse of fish salad when the buff is gone (Have to use the first one manually. It will refresh after it's if you're fishing.)
