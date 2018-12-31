@@ -53,7 +53,7 @@ module.exports = function EasyFishing(mod) {
 	let hasNego = mod.manager.isLoaded('auto-nego'),
 		pendingDeals = [],
 		negoWaiting = false,
-		timer = null,
+		timeout = null,
 		amFishing = false,
 		leftArea = 0;
 
@@ -201,7 +201,8 @@ module.exports = function EasyFishing(mod) {
     		mod.toServer('C_NPC_CONTACT', 2, lastContact);
     		let dialogHook;
 
-    		const timeout = mod.setTimeout(() => {
+			mod.clearTimeout(timeout);
+    		timeout = mod.setTimeout(() => {
     			if (dialogHook) {
     				mod.unhook(dialogHook);
     				selling = false;
@@ -266,7 +267,8 @@ module.exports = function EasyFishing(mod) {
 						unk3: 0,
 						unk4: true
 					});
-					mod.setTimeout(() => {
+					mod.clearTimeout(timeout);
+					timeout = mod.setTimeout(() => {
 						if (currentBait) {
 							startFishing();
 						} else {
@@ -285,7 +287,8 @@ module.exports = function EasyFishing(mod) {
 					let delay = mod.settings.useRandomDelay ? rand(mod.settings.moveItemDelay, 200) : 200;
 
 					for (let item of itemsToProcess.slice(0, 20)) {
-						mod.setTimeout(() => {
+						mod.clearTimeout(timeout);
+						timeout = mod.setTimeout(() => {
 							if (cannotDismantle) return;
 
 							mod.toServer('C_RQ_ADD_ITEM_TO_DECOMPOSITION_CONTRACT', 1, {
@@ -298,10 +301,12 @@ module.exports = function EasyFishing(mod) {
 						delay += mod.settings.useRandomDelay ? rand(mod.settings.moveItemDelay, 200) : 200;
 					}
 					itemsToProcess = itemsToProcess.slice(20);
-					mod.setTimeout(() => {
+					mod.clearTimeout(timeout);
+					timeout = mod.setTimeout(() => {
 						mod.toServer('C_RQ_START_SOCIAL_ON_PROGRESS_DECOMPOSITION', 1, { contract: event.id });
 
-						mod.setTimeout(() => {
+						mod.clearTimeout(timeout);
+						timeout = mod.setTimeout(() => {
 							if (cannotDismantle) {
 								itemsToProcess = [];
 								cannotDismantle = false;
@@ -313,7 +318,8 @@ module.exports = function EasyFishing(mod) {
 								});
 
 								if (mod.settings.discardFilets && mod.settings.discardCount > 0) {
-									mod.setTimeout(startDiscarding, 2000);
+									mod.clearTimeout(timeout);
+									timeout = mod.setTimeout(startDiscarding, 2000);
 								} else {
 									command.message(`Auto fishing stopping, cannot dismantle any more fish.`);
 								}
@@ -329,8 +335,8 @@ module.exports = function EasyFishing(mod) {
 									type: 89,
 									id: event.id
 								});
-								clearTimeout(timer);
-								timer = setTimeout(startFishing, 2000);
+								mod.clearTimeout(timeout);
+								timeout = mod.setTimeout(startFishing, 2000);
 							}
 						}, 3000);
 					}, delay);
@@ -341,7 +347,8 @@ module.exports = function EasyFishing(mod) {
 					let delay = mod.settings.useRandomDelay ? rand(mod.settings.moveItemDelay, 200) : 200;
 
 					for (let item of itemsToProcess.slice(0, 8)) {
-						mod.setTimeout(() => {
+						mod.clearTimeout(timeout);
+						timeout = mod.setTimeout(() => {
 							mod.toServer('C_STORE_SELL_ADD_BASKET', 1, {
 								cid: gameId,
 								npc: event.id,
@@ -353,7 +360,8 @@ module.exports = function EasyFishing(mod) {
 						delay += mod.settings.useRandomDelay ? rand(mod.settings.moveItemDelay, 200) : 200;
 					}
 					itemsToProcess = itemsToProcess.slice(8);
-					mod.setTimeout(() => {
+					mod.clearTimeout(timeout);
+					timeout = mod.setTimeout(() => {
 						mod.toServer('C_STORE_COMMIT', 1, { gameId, contract: event.id });
 					}, delay);
 				} else {
@@ -362,8 +370,8 @@ module.exports = function EasyFishing(mod) {
 						type: 9,
 						id: event.id
 					});
-					clearTimeout(timer);
-					timer = setTimeout(startFishing, 2000);
+					mod.clearTimeout(timeout);
+					timeout = mod.setTimeout(startFishing, 2000);
 				}
 			}
 		}
@@ -398,8 +406,8 @@ module.exports = function EasyFishing(mod) {
 						slot: item.slot - 40,
 						amount: Math.min(item.amount, mod.settings.discardCount)
 					});
-					clearTimeout(timer);
-					timer = setTimeout(startFishing, 2000);
+					mod.clearTimeout(timeout);
+					timeout = mod.setTimeout(startFishing, 2000);
 					break;
     			}
     		}
@@ -441,7 +449,8 @@ module.exports = function EasyFishing(mod) {
         const stream = new Readable(data);
         stream.position = 8;
         if (stream.uint64() === gameId) {
-            mod.setTimeout(() => {
+			mod.clearTimeout(timeout);
+            timeout = mod.setTimeout(() => {
                 mod.toServer('C_END_FISHING_MINIGAME', 1, {
                     success: true
                 });
@@ -460,8 +469,8 @@ module.exports = function EasyFishing(mod) {
 					pendingDeals.splice(i--, 1);
 				}
 				negoWaiting = true;
-				clearTimeout(timer);
-				timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
+				mod.clearTimeout(timeout);
+				timeout = mod.setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
 				return false;
 			} 
 			
@@ -481,8 +490,8 @@ module.exports = function EasyFishing(mod) {
 					unk4: true
 				});
 				useSalad = false;
-				clearTimeout(timer);
-				timer = setTimeout(startFishing, 1000);
+				mod.clearTimeout(timeout);
+				timeout = mod.setTimeout(startFishing, 1000);
 				return false;
 			}
 			negoWaiting = false;
@@ -535,7 +544,8 @@ module.exports = function EasyFishing(mod) {
 					unk3: 0,
 					unk4: true
     			});
-    			mod.setTimeout(() => {
+				mod.clearTimeout(timeout);
+    			timeout = mod.setTimeout(() => {
     				if (!currentBait && lastBait) {
     					startCraftingBait();
     				} else {
@@ -557,30 +567,30 @@ module.exports = function EasyFishing(mod) {
 			
 			else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA' && !negoWaiting){ // server trolling us?
 				command.message("Fishing area changed (you left it?), well that happens... lets try again?");
-				clearTimeout(timer);
+				mod.clearTimeout(timeout);
 				leftArea++;
 				if(leftArea < 7){
-					timer = setTimeout(startFishing, rng(ACTION_DELAY_THROW_ROD));
+					timeout = mod.setTimeout(startFishing, rng(ACTION_DELAY_THROW_ROD));
 				} else{
 					command.message("Fishing area changed for good it seems, can't fish anymore, - choose better place next time. Stopping...");
 				}
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && !pendingDeals.length){ // hmmm?
 				command.message("Fishing cancelled... lets try again?");
-				clearTimeout(timer);
-				timer = setTimeout(startFishing, rng(ACTION_DELAY_FISH_START));
+				mod.clearTimeout(timeout);
+				timeout = mod.setTimeout(startFishing, rng(ACTION_DELAY_FISH_START));
 			} else if(msg.id === 'SMT_YOU_ARE_BUSY'){ // anti-anit-bot
 				command.message("Evil people trying to disturb your fishing... lets try again?");
-				clearTimeout(timer);
-				timer = setTimeout(startFishing, rng(ACTION_DELAY_THROW_ROD));
+				mod.clearTimeout(timeout);
+				timeout = mod.setTimeout(startFishing, rng(ACTION_DELAY_THROW_ROD));
 			} else if(negoWaiting && !pendingDeals.length && msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // all out of deals and still waiting?
 				command.message('All negotiations finished... resuming fishing shortly')
-				clearTimeout(timer);
-				timer = setTimeout(startFishing, 3000);
+				mod.clearTimeout(timeout);
+				timeout = mod.setTimeout(startFishing, 3000);
 			} else if(msg.id === 'SMT_CANNOT_USE_ITEM_WHILE_CONTRACT'){ // we want to throw the rod but still trading?
 				negoWaiting = true;
 				command.message('Negotiations are taking long time to finish... lets wait a bit more')
-				clearTimeout(timer);
-				timer = setTimeout(startFishing, 9000);
+				mod.clearTimeout(timeout);
+				timeout = mod.setTimeout(startFishing, 9000);
 			}
 			
 			
