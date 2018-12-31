@@ -71,9 +71,6 @@ module.exports = function EasyFishing(mod) {
     }
 
     function validate(value, lowerBound, upperBound, defaultValue) {
-		
-		//command.message("validate");
-		
     	value = parseInt(value);
     	if (isNaN(value)) {
     		return defaultValue;
@@ -86,35 +83,6 @@ module.exports = function EasyFishing(mod) {
     	}
     	return value;
     }
-
-    command.add('usebait', {
-    	$default() {
-			//command.message("sending bait 4");
-			mod.toServer('C_USE_ITEM', 3, { // use_bait_item() NOT WORKING SOMETIMES
-				gameId,
-				id: 206003,
-				dbid: 0n,
-				target: 0n,
-				amount: 1,
-				dest: 0,
-				loc: playerLocation,
-				w: playerAngle,
-				unk1: 0,
-				unk2: 0,
-				unk3: 0,
-				unk4: true
-			});
-			
-    	}
-	});
-	
-	command.add('startfishing', {
-    	$default() {
-			//command.message("startfishing");
-			startFishing();
-			
-    	}
-	});
 	
 	command.add('easyfishing', {
     	$default() {
@@ -157,10 +125,7 @@ module.exports = function EasyFishing(mod) {
     	}
     });
 
-	function startCraftingBait() { // use_bait_item()
-		
-		//command.message("startCraftingBait");
-		
+	function startCraftingBait() {
 		if (!crafting) {
 			successCount = 0;
 		}
@@ -171,42 +136,24 @@ module.exports = function EasyFishing(mod) {
     	});
     }
 
-    function startFishing() { // throw_the_rod()
-		//command.message("startFishing");
-		
-		if(pendingDeals.length){
-			command.message("startFishing Lets address suggested deals and give it some time...");
-			
-			for(let i = 0; i < pendingDeals.length; i++){
-				mod.toClient('S_TRADE_BROKER_DEAL_SUGGESTED', 1, pendingDeals[i]);
-				pendingDeals.splice(i--, 1);
-			}
-			negoWaiting = true;
-			timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
-		} else {
-			negoWaiting = false;
-			//command.message("Throwing Rod~~");
-			mod.toServer('C_USE_ITEM', 3, {
-				gameId,
-				id: fishingRod,
-				dbid: 0,
-				target: 0,
-				amount: 1,
-				dest: 0,
-				loc: playerLocation,
-				w: playerAngle,
-				unk1: 0,
-				unk2: 0,
-				unk3: 0,
-				unk4: true
-			});
-		}
+    function startFishing() {
+		mod.toServer('C_USE_ITEM', 3, { // use rod
+			gameId,
+			id: fishingRod,
+			dbid: 0,
+			target: 0,
+			amount: 1,
+			dest: 0,
+			loc: playerLocation,
+			w: playerAngle,
+			unk1: 0,
+			unk2: 0,
+			unk3: 0,
+			unk4: true
+		});
     }
 
     function startDismantling() {
-		
-		//command.message("startDismantling");
-		
     	itemsToProcess = [];
     	waitingInventory = true;
     	dismantling = true;
@@ -214,9 +161,6 @@ module.exports = function EasyFishing(mod) {
     }
 
     function startSelling() {
-		
-		//command.message("startSelling");
-		
     	if (lastContact.gameId && lastDialog.id) {
 	        itemsToProcess = [];
 	    	waitingInventory = true;
@@ -233,17 +177,11 @@ module.exports = function EasyFishing(mod) {
     }
 
     function startDiscarding() {
-		
-		//command.message("startDiscarding");
-		
     	discarding = true;
     	mod.toServer('C_SHOW_INVEN', 1, {unk: 1});
     }
 
     function processItemsToDismantle() {
-		
-		//command.message("processItemsToDismantle");
-		
     	if (itemsToProcess.length > 0) {
     		mod.toServer('C_REQUEST_CONTRACT', 1, {
     			type: 89,
@@ -259,9 +197,6 @@ module.exports = function EasyFishing(mod) {
     }
 
     function processItemsToSell() {
-		
-		//command.message("processItemsToSell");
-		
     	if (itemsToProcess.length > 0) {
     		mod.toServer('C_NPC_CONTACT', 2, lastContact);
     		let dialogHook;
@@ -290,39 +225,25 @@ module.exports = function EasyFishing(mod) {
     }
 
     mod.hook('C_NPC_CONTACT', 2, event => {
-		
-		//command.message("C_NPC_CONTACT");
-		
     	Object.assign(lastContact, event);
     });
 
     mod.hook('C_DIALOG', 1, event => {
-		
-		//command.message("C_DIALOG");
-		
     	Object.assign(lastDialog, event);
     });
 
     mod.hook('C_CAST_FISHING_ROD', 'raw', (code, data) => {
-		
-		//command.message("C_CAST_FISHING_ROD");
-		
     	data[20] = validate(mod.settings.castDistance, 0, 18, 3);
     	return true;
     });
 
     mod.hook('S_END_PRODUCE', 1, event => {
-		
-		//command.message("S_END_PRODUCE");
-		
     	if (crafting) {
 			if (event.success) {
 				successCount++;
 				startCraftingBait();
 			} else {
 				crafting = false;
-				
-				//command.message("Done Crafting, success# = " + successCount);
 				
 				if (successCount == 0) {
 					if (mod.settings.autoDismantling) {
@@ -331,16 +252,7 @@ module.exports = function EasyFishing(mod) {
 						command.message("Failed to auto craft. Stoping...");
 					}
 				} else {
-					if(currentBait == null){
-						//command.message("currentBait == null");
-						currentBait = lastBait;
-					}
-					
-					//let temppl = playerLocation;
-					//loopBigIntToString(temppl);
-					//command.message(JSON.stringify(temppl, null, 4));
-					
-					mod.toServer('C_USE_ITEM', 3, { // use_bait_item() NOT WORKING SOMETIMES
+					mod.toServer('C_USE_ITEM', 3, { // use bait
 		    			gameId,
 						id: lastBait.itemId,
 						dbid: 0n,
@@ -355,17 +267,6 @@ module.exports = function EasyFishing(mod) {
 						unk4: true
 					});
 					mod.setTimeout(() => {
-						if(currentBait){
-							//command.message("S_END_PRODUCE, currentBait = " + currentBait.itemId);
-						} else{
-							//command.message("S_END_PRODUCE, currentBait = null");
-						}
-						if(lastBait){
-							//command.message("S_END_PRODUCE, lastBait = " + lastBait.itemId);
-						} else{
-							//command.message("S_END_PRODUCE, lastBait = null");
-						}
-						
 						if (currentBait) {
 							startFishing();
 						} else {
@@ -378,9 +279,6 @@ module.exports = function EasyFishing(mod) {
 	});
 
 	mod.hook('S_REQUEST_CONTRACT', 1, event => {
-		
-		//command.message("S_REQUEST_CONTRACT");
-		
 		if (dismantling || selling) {
 			if (event.type == 89) {
 				const handleContract = () => {
@@ -431,7 +329,8 @@ module.exports = function EasyFishing(mod) {
 									type: 89,
 									id: event.id
 								});
-								mod.setTimeout(startFishing, 2000);
+								clearTimeout(timer);
+								timer = setTimeout(startFishing, 2000);
 							}
 						}, 3000);
 					}, delay);
@@ -463,16 +362,14 @@ module.exports = function EasyFishing(mod) {
 						type: 9,
 						id: event.id
 					});
-					mod.setTimeout(startFishing, 2000);
+					clearTimeout(timer);
+					timer = setTimeout(startFishing, 2000);
 				}
 			}
 		}
 	});
 
     mod.hook('S_INVEN', 16, event => {
-		
-		//command.message("S_INVEN");
-		
     	if (!dismantling && !selling && !discarding) return;
 
     	if (waitingInventory) {
@@ -501,7 +398,8 @@ module.exports = function EasyFishing(mod) {
 						slot: item.slot - 40,
 						amount: Math.min(item.amount, mod.settings.discardCount)
 					});
-					mod.setTimeout(startFishing, 2000);
+					clearTimeout(timer);
+					timer = setTimeout(startFishing, 2000);
 					break;
     			}
     		}
@@ -514,21 +412,13 @@ module.exports = function EasyFishing(mod) {
     });
 
     mod.hook('S_LOGIN', 10, event => {
-		
-		//command.message("S_LOGIN");
-		
         ({gameId} = event);
     });
 
     mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
-		
-		//command.message("S_FISHING_BITE");
-		
         if (!mod.settings.enabled) return;
 
 		leftArea = 0;
-		
-		
         const stream = new Readable(data);
         stream.position = 8;
         if (stream.uint64() === gameId) {
@@ -537,9 +427,6 @@ module.exports = function EasyFishing(mod) {
     });
 
 	mod.hook('S_CAST_FISHING_ROD', 'raw', (code, data) => {
-		
-		//command.message("S_CAST_FISHING_ROD");
-		
         const stream = new Readable(data);
         stream.position = 4;
         if (stream.uint64() === gameId) {
@@ -549,9 +436,6 @@ module.exports = function EasyFishing(mod) {
     });    
 
     mod.hook('S_START_FISHING_MINIGAME', 'raw', (code, data) => {
-		
-		//command.message("S_START_FISHING_MINIGAME");
-		
         if (!mod.settings.enabled) return;
 		
         const stream = new Readable(data);
@@ -567,13 +451,6 @@ module.exports = function EasyFishing(mod) {
     });
 
     mod.hook('C_USE_ITEM', 3, event => {
-		
-		//command.message("C_USE_ITEM");
-		//console.log("C_USE_ITEM");
-		//let tempevent = event;
-		//loopBigIntToString(tempevent);
-		//console.log(JSON.stringify(tempevent, null, 4));
-		
     	if (RODS.includes(event.id)) {
 			if(pendingDeals.length){
 				command.message("C_USE_ITEM Lets address suggested deals and give it some time...");
@@ -583,7 +460,8 @@ module.exports = function EasyFishing(mod) {
 					pendingDeals.splice(i--, 1);
 				}
 				negoWaiting = true;
-				mod.setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
+				clearTimeout(timer);
+				timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)*6));
 				return false;
 			} 
 			
@@ -603,9 +481,11 @@ module.exports = function EasyFishing(mod) {
 					unk4: true
 				});
 				useSalad = false;
-				mod.setTimeout(startFishing, 1000);
+				clearTimeout(timer);
+				timer = setTimeout(startFishing, 1000);
 				return false;
 			}
+			negoWaiting = false;
 
 			if (mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)) {
 				mod.toClient('S_CHAT', 2, { channel: 21, authorName: 'KTC', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
@@ -613,34 +493,15 @@ module.exports = function EasyFishing(mod) {
 		}
 	});
 
-	mod.hook('C_PLAYER_LOCATION', 5, event => {
-		
-		//command.message("C_PLAYER_LOCATION");
-		
-		//if ([0, 1, 5, 6].includes(event.type)) { // u fking troll made me waste hours to figure out that you did this dumb shit
-		if (true) {
-			Object.assign(playerLocation, event.loc);
-			playerAngle = event.w;
-		}
+	mod.hook('C_PLAYER_LOCATION', 5, event => { // the restriction on this was causing the playerLocation to sometimes never update, which made bait usage fail
+		Object.assign(playerLocation, event.loc);
+		playerAngle = event.w;
 	});
 
     mod.hook('S_ABNORMALITY_BEGIN', 3, event => {
     	if (event.target === gameId) {
-			
-			
     		currentBait = CRAFTABLE_BAITS.find(obj => obj.abnormalityId === event.id) || currentBait;
     		lastBait = currentBait || lastBait;
-			
-			if(currentBait){
-				//command.message("S_ABNORMALITY_BEGIN, currentBait = " + currentBait.itemId);
-			} else{
-				//command.message("S_ABNORMALITY_BEGIN, currentBait = null");
-			}
-			if(lastBait){
-				//command.message("S_ABNORMALITY_BEGIN, lastBait = " + lastBait.itemId);
-			} else{
-				//command.message("S_ABNORMALITY_BEGIN, lastBait = null");
-			}
     	}
     });
 
@@ -652,24 +513,15 @@ module.exports = function EasyFishing(mod) {
     	} else if (event.id === 70261 && mod.settings.reUseFishSalad) {
     		useSalad = true;
     	}
-		
-		if(currentBait){
-			//command.message("S_ABNORMALITY_END, currentBait = " + currentBait.itemId);
-		} else{
-			//command.message("S_ABNORMALITY_END, currentBait = null");
-		}
     });
 
     mod.hook('S_SYSTEM_MESSAGE', 1, event => {
-		
-		//command.message("S_SYSTEM_MESSAGE");
-		
     	if (!mod.settings.enabled) return;
     	
     	const msg = mod.parseSystemMessage(event.message);
     	if (msg) {
     		if (mod.settings.autoCrafting && lastBait && msg.id === 'SMT_CANNOT_FISHING_NON_BAIT') { // out of bait
-    			mod.toServer('C_USE_ITEM', 3, {
+    			mod.toServer('C_USE_ITEM', 3, { // use bait
 	    			gameId,
 					id: lastBait.itemId,
 					dbid: 0,
@@ -707,7 +559,7 @@ module.exports = function EasyFishing(mod) {
 				command.message("Fishing area changed (you left it?), well that happens... lets try again?");
 				clearTimeout(timer);
 				leftArea++;
-				if(leftArea < 7){ // startFishing();
+				if(leftArea < 7){
 					timer = setTimeout(startFishing, rng(ACTION_DELAY_THROW_ROD));
 				} else{
 					command.message("Fishing area changed for good it seems, can't fish anymore, - choose better place next time. Stopping...");
@@ -723,12 +575,12 @@ module.exports = function EasyFishing(mod) {
 			} else if(negoWaiting && !pendingDeals.length && msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // all out of deals and still waiting?
 				command.message('All negotiations finished... resuming fishing shortly')
 				clearTimeout(timer);
-				timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)+1000));
+				timer = setTimeout(startFishing, 3000);
 			} else if(msg.id === 'SMT_CANNOT_USE_ITEM_WHILE_CONTRACT'){ // we want to throw the rod but still trading?
 				negoWaiting = true;
 				command.message('Negotiations are taking long time to finish... lets wait a bit more')
 				clearTimeout(timer);
-				timer = setTimeout(startFishing, (rng(ACTION_DELAY_THROW_ROD)+3000));
+				timer = setTimeout(startFishing, 9000);
 			}
 			
 			
@@ -736,16 +588,17 @@ module.exports = function EasyFishing(mod) {
 			// else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && !pendingDeals.length){ // hmmm?
 			// but is reliant on a boolean var = stopping to activate and reverts after actually stopping.
 			
+			
+			// TODO: Fix fishing canceled spam
+			
+			// Currently cleaning up and trying to fix fishing canceled spam
+			
     	}
     });
 
 	
-	mod.hook('S_TRADE_BROKER_DEAL_SUGGESTED', 1, event => {
-		
-		//command.message("S_TRADE_BROKER_DEAL_SUGGESTED");
-		
-		
-		if(mod.settings.enabled && hasNego && !negoWaiting && event.offeredPrice === event.sellerPrice){ // lets take a break and trade shall we? // enabled && !amFishing &&
+	mod.hook('S_TRADE_BROKER_DEAL_SUGGESTED', 1, event => { // don't release nego until next rod use
+		if(mod.settings.enabled && hasNego && !negoWaiting && event.offeredPrice === event.sellerPrice){
 			for(let i = 0; i < pendingDeals.length; i++){
 				let deal = pendingDeals[i];
 				if(deal.playerId == event.playerId && deal.listing == event.listing) pendingDeals.splice(i--, 1);
@@ -759,14 +612,6 @@ module.exports = function EasyFishing(mod) {
 	function rng([min, max]){
 		return min + Math.floor(Math.random() * (max - min + 1));
 	}
-	
-	function loopBigIntToString(obj) {
-		Object.keys(obj).forEach(key => {
-			if (obj[key] && typeof obj[key] === 'object') loopBigIntToString(obj[key]);
-			else if (typeof obj[key] === "bigint") obj[key] = obj[key].toString();
-		});
-	}
-	
 	
     mod.hook('C_CHAT', 1, event => {
     	if (event.channel === 10 && mod.settings.enabled) {
