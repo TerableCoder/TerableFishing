@@ -52,7 +52,7 @@ module.exports = function EasyFishing(mod) {
 		negoWaiting = false,
 		timeout = null,
 		amFishing = false,
-		leftArea = 0,
+		retryNumber = 0,
 		stopFishing = false;
 
     function rand([min, max], lowerBound) {
@@ -173,7 +173,8 @@ module.exports = function EasyFishing(mod) {
     			command.message('Failed to start auto sell. Cannot find last merchant npc dialog. Dismantling...');
     			startDismantling();
     		} else {
-    			command.message('Failed to start auto sell. Cannot find last merchant npc dialog. Stoping...');
+    			command.message('Failed to start auto sell. Cannot find last merchant npc dialog. Stopping...');
+				amFishing = false;
     		}
     	}
     }
@@ -213,7 +214,8 @@ module.exports = function EasyFishing(mod) {
 		    			command.message('Failed to contact npc. Dismantling...');
 		    			startDismantling();
 		    		} else {
-		    			command.message('Failed to contact npc. Stoping...');
+		    			command.message('Failed to contact npc. Stopping...');
+						amFishing = false;
 		    		}
     			}
     		}, 5000);
@@ -252,7 +254,8 @@ module.exports = function EasyFishing(mod) {
 					if (mod.settings.autoDismantling) {
 						startDismantling();
 					} else {
-						command.message("Failed to auto craft. Stoping...");
+						command.message("Failed to auto craft. Stopping...");
+						amFishing = false;
 					}
 				} else {
 					mod.toServer('C_USE_ITEM', 3, { // use bait
@@ -274,7 +277,8 @@ module.exports = function EasyFishing(mod) {
 						if (currentBait) {
 							startFishing();
 						} else {
-							command.message("Failed to auto fish. Stoping...");
+							command.message("Failed to auto fish. Stopping...");
+							amFishing = false;
 						}
 					}, 1000);
 				}
@@ -321,6 +325,7 @@ module.exports = function EasyFishing(mod) {
 									timeout = setTimeout(startDiscarding, 2000);
 								} else {
 									command.message(`Auto fishing stopping, cannot dismantle any more fish.`);
+									amFishing = false;
 								}
 								return;
 							}
@@ -411,7 +416,8 @@ module.exports = function EasyFishing(mod) {
 
     		if (!event.more && discarding) {
     			discarding = false;
-    			command.message('Something really weird happened, could not discard filets. Stoping...');
+    			command.message('Something really weird happened, could not discard filets. Stopping...');
+				amFishing = false;
     		}
     	}
     });
@@ -423,7 +429,7 @@ module.exports = function EasyFishing(mod) {
     mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
         if (!mod.settings.enabled) return;
 
-		leftArea = 0;
+		retryNumber = 0;
         const stream = new Readable(data);
         stream.position = 8;
         if (stream.uint64() === gameId) {
@@ -466,14 +472,24 @@ module.exports = function EasyFishing(mod) {
 					pendingDeals.splice(i--, 1);
 				}
 				negoWaiting = true;
-				clearTimeout(timeout);
-				timeout = setTimeout(startFishing, 35000);
+				if(stopFishing){ // so you don't have to wait an extra fish
+					stopFishing = false;
+					amFishing = false;
+					clearTimeout(timeout);
+					timeout = setTimeout(() => {
+						command.message("Fishing stopped.");
+					}, 9000);
+				} else {
+					clearTimeout(timeout);
+					timeout = setTimeout(startFishing, 35000);
+				}
 				return false;
 			} 
 			
 			if (stopFishing) {
 				command.message("Fishing stopped.");
 				stopFishing = false;
+				amFishing = false;
 				return false;
 			}
 			
@@ -494,10 +510,11 @@ module.exports = function EasyFishing(mod) {
 				});
 				useSalad = false;
 				clearTimeout(timeout);
-				timeout = setTimeout(startFishing, 1000);
+				timeout = setTimeout(startFishing, 3000);
 				return false;
 			}
 			negoWaiting = false;
+			amFishing = true;
 
 			if (mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)) {
 				mod.toClient('S_CHAT', 2, { channel: 21, authorName: 'KTC', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
@@ -528,10 +545,15 @@ module.exports = function EasyFishing(mod) {
     });
 
     mod.hook('S_SYSTEM_MESSAGE', 1, event => {
+    	//if (!mod.settings.enabled || !amFishing) return;
     	if (!mod.settings.enabled) return;
 		
     	const msg = mod.parseSystemMessage(event.message);
     	if (msg) {
+			console.log("S_SYSTEM_MESSAGE");
+			console.log(msg);
+			console.log();
+			if (!amFishing) return;
     		if (mod.settings.autoCrafting && lastBait && msg.id === 'SMT_CANNOT_FISHING_NON_BAIT') { // out of bait
     			mod.toServer('C_USE_ITEM', 3, { // use bait
 	    			gameId,
@@ -561,45 +583,89 @@ module.exports = function EasyFishing(mod) {
     			} else if (mod.settings.autoDismantling && !dismantling) {
     				startDismantling();
     			} else {
-    				command.message("Full inventory and no auto dismantling nor auto selling. Stoping...");
+    				command.message("Full inventory and no auto dismantling nor auto selling. Stopping...");
+					amFishing = false;
     			}
     		} else if (msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052') { // craft limit
     			cannotDismantle = true;
     		} else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA' && !negoWaiting){ // non-fishing area bug
 				command.message("Non-fishing area bug? Retrying.");
 				clearTimeout(timeout);
-				leftArea++;
-				if(leftArea < 4){
+				retryNumber++;
+				if(retryNumber < 4){
 					timeout = setTimeout(startFishing, 3000);
 				} else{
+					retryNumber = 0;
 					command.message("Fishing area couldn't be found. Stopping...");
+					amFishing = false;
 				}
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && stopFishing && !pendingDeals.length){ // intentionally stopping
 				command.message("Fishing stopped.");
 				stopFishing = false;
+				amFishing = false;
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && !pendingDeals.length){ // cancelled?
 				command.message("Fishing cancelled. Retrying.");
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 3000);
+			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE'){ // cancelled and deals pending
+				command.message("Fishing cancelled, but we have negotiations to handle!");
+				if(pendingDeals.length){ // double check
+					command.message("Dealing with negotiations.");
+					for(let i = 0; i < pendingDeals.length; i++){
+						mod.toClient('S_TRADE_BROKER_DEAL_SUGGESTED', 1, pendingDeals[i]);
+						pendingDeals.splice(i--, 1);
+					}
+					negoWaiting = true;
+					if(stopFishing){ // so you don't have to wait an extra fish
+						stopFishing = false;
+						amFishing = false;
+						clearTimeout(timeout);
+						timeout = setTimeout(() => {
+							command.message("Fishing stopped.");
+						}, 9000);
+					} else {
+						clearTimeout(timeout);
+						timeout = setTimeout(startFishing, 9000);
+					}
+				} else {
+					command.message("Let me fish just one more! Then I'll negotiate."); // shouldn't happen
+					clearTimeout(timeout);
+					timeout = setTimeout(startFishing, 3000);
+				}
 			} else if(msg.id === 'SMT_YOU_ARE_BUSY'){ // being party invited, traded, etc.
 				command.message("You're busy. Retrying.");
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 3000);
 			} else if(negoWaiting && !pendingDeals.length && msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // finished all negotiations
 				//command.message("Negotiations finished. Resuming."); // too much spam
+				negoWaiting = false;
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 3000);
 			} else if(msg.id === 'SMT_CANNOT_USE_ITEM_WHILE_CONTRACT'){ // still negotiating
-				negoWaiting = true;
 				//command.message("Negotiations still inprogress. I'll try again later."); // too much spam
+				negoWaiting = true;
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 9000);
+			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE'){ // mounted
+				command.message("Can't fish while mounted. Retrying.");
+				clearTimeout(timeout);
+				retryNumber++;
+				if(retryNumber < 2){
+					timeout = setTimeout(startFishing, 3000);
+				} else{
+					retryNumber = 0;
+					command.message("Can't fish while mounted. Stopping...");
+					amFishing = false;
+				}
+			} else if(msg.id === 'SMT_CANNOT_FISHING_NON_BAIT'){ // no bait
+				command.message("Can't fish without bait. Use a craftable bait then try again. Stopping...");
+				amFishing = false;
 			}
     	}
     });
 	
 	mod.hook('S_TRADE_BROKER_DEAL_SUGGESTED', 1, event => { // store nego request
-		if(mod.settings.enabled && hasNego && !negoWaiting && event.offeredPrice === event.sellerPrice){
+		if(mod.settings.enabled && amFishing && hasNego && !negoWaiting && event.offeredPrice === event.sellerPrice){
 			for(let i = 0; i < pendingDeals.length; i++){
 				let deal = pendingDeals[i];
 				if(deal.playerId == event.playerId && deal.listing == event.listing) pendingDeals.splice(i--, 1);
