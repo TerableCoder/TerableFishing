@@ -2,6 +2,8 @@ Move the files inside "defs" folder to the folder node_modules/tera-data/protoco
 
 Also for NA/EU/SEA/TW download the files according to your server from #opcodes and move it to node_modules/tera-data/map. (or merge their contents if you already have custom opcodes.)
 
+This version is completely compatible with auto-nego! Fish like a brokerage god with https://github.com/Owyn/auto-nego
+
 Commands:
 !easyfishing - Toggles the module on and off.
 !easyfishing craft - Toggles auto bait crafting.
