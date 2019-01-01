@@ -545,15 +545,10 @@ module.exports = function EasyFishing(mod) {
     });
 
     mod.hook('S_SYSTEM_MESSAGE', 1, event => {
-    	//if (!mod.settings.enabled || !amFishing) return;
-    	if (!mod.settings.enabled) return;
+    	if (!mod.settings.enabled || !amFishing) return;
 		
     	const msg = mod.parseSystemMessage(event.message);
     	if (msg) {
-			console.log("S_SYSTEM_MESSAGE");
-			console.log(msg);
-			console.log();
-			if (!amFishing) return;
     		if (mod.settings.autoCrafting && lastBait && msg.id === 'SMT_CANNOT_FISHING_NON_BAIT') { // out of bait
     			mod.toServer('C_USE_ITEM', 3, { // use bait
 	    			gameId,
