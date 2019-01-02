@@ -53,7 +53,8 @@ module.exports = function EasyFishing(mod) {
 		timeout = null,
 		amFishing = false,
 		retryNumber = 0,
-		stopFishing = false;
+		stopFishing = false,
+		consoleMsg = false;
 
     function rand([min, max], lowerBound) {
     	lowerBound = isNaN(lowerBound) ? Number.NEGATIVE_INFINITY : lowerBound;
@@ -81,6 +82,14 @@ module.exports = function EasyFishing(mod) {
     	}
     	return value;
     }
+	
+	function timeStamp(msg) {
+		let timeNow = new Date();
+		let timeText = timeNow.getHours().toLocaleString(undefined, {minimumIntegerDigits: 2}) + ':' +
+			timeNow.getMinutes().toLocaleString(undefined, {minimumIntegerDigits: 2}) + ':' + 
+			timeNow.getSeconds().toLocaleString(undefined, {minimumIntegerDigits: 2});
+		return ("[" + timeText + "] ");
+	}
 	
 	command.add('easyfishing', {
     	$default() {
@@ -124,6 +133,10 @@ module.exports = function EasyFishing(mod) {
 		stop() {
         	stopFishing = true;
     		command.message(`Fishing will stop soon...`);			
+    	},
+		consoleMsg() {
+        	consoleMsg = !consoleMsg;
+    		command.message(`consoleMsg = ${consoleMsg ? "enabled" : "disabled"}.`);			
     	}
     });
 
@@ -422,7 +435,7 @@ module.exports = function EasyFishing(mod) {
     	}
     });
 
-    mod.hook('S_LOGIN', 10, event => {
+    mod.hook('S_LOGIN', 12, event => {
         ({gameId} = event);
     });
 
@@ -466,12 +479,11 @@ module.exports = function EasyFishing(mod) {
     	if (RODS.includes(event.id)) {
 			if(pendingDeals.length){
 				command.message("Dealing with negotiations.");
-				
+				negoWaiting = true;
 				for(let i = 0; i < pendingDeals.length; i++){
 					mod.toClient('S_TRADE_BROKER_DEAL_SUGGESTED', 1, pendingDeals[i]);
 					pendingDeals.splice(i--, 1);
 				}
-				negoWaiting = true;
 				if(stopFishing){ // so you don't have to wait an extra fish
 					stopFishing = false;
 					amFishing = false;
@@ -481,7 +493,7 @@ module.exports = function EasyFishing(mod) {
 					}, 9000);
 				} else {
 					clearTimeout(timeout);
-					timeout = setTimeout(startFishing, 35000);
+					timeout = setTimeout(startFishing, 18000);
 				}
 				return false;
 			} 
@@ -510,7 +522,7 @@ module.exports = function EasyFishing(mod) {
 				});
 				useSalad = false;
 				clearTimeout(timeout);
-				timeout = setTimeout(startFishing, 3000);
+				timeout = setTimeout(startFishing, 1000);
 				return false;
 			}
 			negoWaiting = false;
@@ -548,6 +560,10 @@ module.exports = function EasyFishing(mod) {
     	if (!mod.settings.enabled || !amFishing) return;
 		
     	const msg = mod.parseSystemMessage(event.message);
+		if(consoleMsg){
+			console.log("Logged Message");
+			console.log(msg);
+		}
     	if (msg) {
     		if (mod.settings.autoCrafting && lastBait && msg.id === 'SMT_CANNOT_FISHING_NON_BAIT') { // out of bait
     			mod.toServer('C_USE_ITEM', 3, { // use bait
@@ -581,7 +597,7 @@ module.exports = function EasyFishing(mod) {
     				command.message("Full inventory and no auto dismantling nor auto selling. Stopping...");
 					amFishing = false;
     			}
-    		} else if (msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052') { // craft limit
+    		} else if (msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052') { // too many fish fillets
     			cannotDismantle = true;
     		} else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA' && !negoWaiting){ // non-fishing area bug
 				command.message("Non-fishing area bug? Retrying.");
@@ -592,6 +608,17 @@ module.exports = function EasyFishing(mod) {
 				} else{
 					retryNumber = 0;
 					command.message("Fishing area couldn't be found. Stopping...");
+					amFishing = false;
+				}
+			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE' && !negoWaiting){ // mounted
+				command.message("Can't fish while mounted. Retrying.");
+				clearTimeout(timeout);
+				retryNumber++;
+				if(retryNumber < 2){
+					timeout = setTimeout(startFishing, 3000);
+				} else{
+					retryNumber = 0;
+					command.message("Can't fish while mounted. Stopping...");
 					amFishing = false;
 				}
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && stopFishing && !pendingDeals.length){ // intentionally stopping
@@ -606,11 +633,11 @@ module.exports = function EasyFishing(mod) {
 				command.message("Fishing cancelled, but we have negotiations to handle!");
 				if(pendingDeals.length){ // double check
 					command.message("Dealing with negotiations.");
+					negoWaiting = true;
 					for(let i = 0; i < pendingDeals.length; i++){
 						mod.toClient('S_TRADE_BROKER_DEAL_SUGGESTED', 1, pendingDeals[i]);
 						pendingDeals.splice(i--, 1);
 					}
-					negoWaiting = true;
 					if(stopFishing){ // so you don't have to wait an extra fish
 						stopFishing = false;
 						amFishing = false;
@@ -622,10 +649,10 @@ module.exports = function EasyFishing(mod) {
 						clearTimeout(timeout);
 						timeout = setTimeout(startFishing, 9000);
 					}
-				} else {
-					command.message("Let me fish just one more! Then I'll negotiate."); // shouldn't happen
+				} else { // shouldn't happen
+					command.message("Let me catch just one more fish! Then I'll negotiate.");
 					clearTimeout(timeout);
-					timeout = setTimeout(startFishing, 3000);
+					timeout = setTimeout(startFishing, 1000); // this should start the nego
 				}
 			} else if(msg.id === 'SMT_YOU_ARE_BUSY'){ // being party invited, traded, etc.
 				command.message("You're busy. Retrying.");
@@ -635,26 +662,62 @@ module.exports = function EasyFishing(mod) {
 				//command.message("Negotiations finished. Resuming."); // too much spam
 				negoWaiting = false;
 				clearTimeout(timeout);
-				timeout = setTimeout(startFishing, 3000);
+				timeout = setTimeout(startFishing, 1000);
 			} else if(msg.id === 'SMT_CANNOT_USE_ITEM_WHILE_CONTRACT'){ // still negotiating
 				//command.message("Negotiations still inprogress. I'll try again later."); // too much spam
 				negoWaiting = true;
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 9000);
-			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE'){ // mounted
-				command.message("Can't fish while mounted. Retrying.");
-				clearTimeout(timeout);
-				retryNumber++;
-				if(retryNumber < 2){
-					timeout = setTimeout(startFishing, 3000);
-				} else{
-					retryNumber = 0;
-					command.message("Can't fish while mounted. Stopping...");
-					amFishing = false;
-				}
 			} else if(msg.id === 'SMT_CANNOT_FISHING_NON_BAIT'){ // no bait
 				command.message("Can't fish without bait. Use a craftable bait then try again. Stopping...");
 				amFishing = false;
+			} else if(msg.id === 'SMT_PET_CANT_ACTION_ORDER'){ // using pet, sometimes sends no message and fishing stops
+				command.message("Can't fish while you're using a pet. Retrying.");
+				clearTimeout(timeout);
+				timeout = setTimeout(startFishing, 3000);
+			} else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA'){ // non-fishing area bug while negoWaiting
+			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE'){ // mounted while negoWaiting
+			} else if(msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // sold item with more deals to finish
+			
+			} else if(msg.id === 'SMT_CANNOT_HAVE_MORE_ITEMS'){ // can't have more fish fillets
+			} else if(msg.id === 'SMT_GENERAL_CANT_REG_ITEM_LIMIT'){ // can't have more fish fillets
+			} else if(msg.id === 'SMT_ITEM_DELETED'){ // deleted fish fillets
+			
+			} else if(msg.id === 'SMT_FISHING_RESULT_SUCCESS'){ // caught a fish
+			} else if(msg.id === 'SMT_ITEM_USED'){ // used banker summon
+			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_INSERT'){ // insert to bank
+			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_DRAW'){ // withdraw from bank
+			} else if(msg.id === 'SMT_GACHA_REWARD'){ // someone got a reward from a box
+			} else if(msg.id === 'SMT_MAX_ENCHANT_SUCCEED'){ // enchant success message
+			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGON_NO_MESSAGE'){ // guild member login, empty login message
+			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGON'){ // guild member logon with login message
+			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGOUT'){ // guild member logout
+			//} else if(msg.id === ''){ // guild quest accept
+			//} else if(msg.id === ''){ // guild quest success
+			} else if(msg.id === 'SMT_GQUEST_NORMAL_FAIL_OVERTIME'){ // guild quest failed
+			} else if(msg.id === 'SMT_FISHING_REWARD'){ // someone caught a BAF
+			} else if(msg.id === 'SMT_USE_ITEM_NO_EXIST'){ // item doesn't exist, aka lag when trading
+			} else if(msg.id === 'SMT_NO_ITEM'){ // no bait
+			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE'){ // can't craft more bait, or can't have more fish fillets
+			} else if(msg.id === 'SMT_ITEM_USED_ACTIVE'){ // used bait on
+			} else if(msg.id === 'SMT_ITEM_USED_DEACTIVE'){ // used bait off
+			} else if(msg.id === 'SMT_HIDDEN_QUEST_TASK_END'){ // completed vanguard
+			} else if(msg.id === 'SMT_MEDIATE_REG_SUCCESS_ITEM'){ // listed item onto broker
+			} else if(msg.id === 'SMT_MEDIATE_SUCCESS_BUY'){ // bought item from broker
+			} else if(msg.id === 'SMT_MEDIATE_TRADE_FINISH_USE_MONEY'){ // pay for the brokered item
+			} else if(msg.id === 'SMT_MEDIATE_FAIL_CALCULATE'){ // too poor to buy from broker
+			} else if(msg.id === 'SMT_MEDIATE_CALCULATE'){ // broker thing before claim
+			} else if(msg.id === 'SMT_MEDIATE_CALCULATE_GET_ITEM'){ // get item from broker
+			} else if(msg.id === 'SMT_MEDIATE_CALCULATE_GET_MONEY'){ // get money from item sold on broker
+			} else if(msg.id === 'SMT_LOOTED_MONEY'){ // vendored fish
+			} else if(msg.id === 'SMT_ITEM_DECOMPOSE_COMPLETE'){ // dismantled fish
+			} else if(msg.id === 'SMT_BATTLE_SKILL_FAIL_COOL_TIME'){ // skill on cd
+			} else if(msg.id === 'SMT_FIELD_EVENT_WORLD_ANNOUNCE'){ // superior guardian mission
+			} else if(msg.id === 'SMT_PLAYTIME_TIMER'){ // you've been playing for x hours
+			} else if(msg.id === 'SMT_KOREAN_RATING_TEENAGER_PROHIBITED'){ // logs off koreans?
+			} else {
+				console.log(timeStamp() + "Something fishy is going on here...");
+				console.log(msg);
 			}
     	}
     });
