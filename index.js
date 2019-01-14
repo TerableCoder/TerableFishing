@@ -54,7 +54,9 @@ module.exports = function EasyFishing(mod) {
 		amFishing = false,
 		retryNumber = 0,
 		stopFishing = false,
-		consoleMsg = false;
+		consoleMsg = false,
+		statFishedTiers = {},
+		startTime = null;
 
     function rand([min, max], lowerBound) {
     	lowerBound = isNaN(lowerBound) ? Number.NEGATIVE_INFINITY : lowerBound;
@@ -134,11 +136,71 @@ module.exports = function EasyFishing(mod) {
         	stopFishing = true;
     		command.message(`Fishing will stop soon...`);			
     	},
+		cancel() { // fk this shit
+			/*
+        	stopFishing = true;
+    		command.message(`Fishing will cancel soon...`);
+			clearTimeout(timeout);
+			if(startTime == null){
+				timeout = setTimeout(startFishing, 1000);
+			} else{
+				timeout = setTimeout(() => {
+					startFishing();
+					//mod.toServer('C_STOP_FISHING', 1, {});
+					stopFishing = false;
+					amFishing = false;
+					calculateFishCaught();
+				}, 1000);
+			}
+			*/
+    	},
+		start() {
+			if (mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)) {
+				mod.toClient('S_CHAT', 2, { channel: 21, authorName: 'KTC', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
+			}
+			statFishedTiers = {}
+			startTime = new Date().getTime();
+    		command.message(`Fish logging started.`);
+			clearTimeout(timeout);
+			timeout = setTimeout(startFishing, 1000);
+    	},
 		consoleMsg() {
         	consoleMsg = !consoleMsg;
     		command.message(`consoleMsg = ${consoleMsg ? "enabled" : "disabled"}.`);			
     	}
     });
+	
+	
+	function calculateFishCaught(){
+		//mod.toServer('C_STOP_FISHING', 1, {});
+		if(startTime == null) return;
+		let ms = new Date().getTime() - startTime;
+		startTime = null;
+		let totalSeconds = Math.floor(ms / 1000);
+		let s = addZero(Math.floor(totalSeconds % 60));
+		let m = addZero(Math.floor((totalSeconds / 60) % 60));
+		let h = addZero(Math.floor(totalSeconds / 3600));
+		let statFished = 0;
+		for (let i in statFishedTiers){
+			statFished += statFishedTiers[i];
+		}
+		if(statFished == 0){
+			command.message('Caught 0 fish. Time elapsed: ' + (h + ":" + m + ":" + s) + "."); 
+			return;
+		}
+		command.message('Fished out: ' + statFished + ' fishes. Time elapsed: ' + (h + ":" + m + ":" + s) + ". Per fish: " + Math.round(totalSeconds / statFished) + " sec");
+		command.message('Fishes: ');
+		for (let i in statFishedTiers){
+			command.message('Tier ' + i + ': ' + statFishedTiers[i]);
+		}
+		statFishedTiers = {};
+	}
+	
+	function addZero(i){
+		if (i < 10) i = "0" + i;
+		return i;
+	}
+	
 
 	function startCraftingBait() {
 		if (!crafting) {
@@ -188,6 +250,7 @@ module.exports = function EasyFishing(mod) {
     		} else {
     			command.message('Failed to start auto sell. Cannot find last merchant npc dialog. Stopping...');
 				amFishing = false;
+				calculateFishCaught();
     		}
     	}
     }
@@ -229,6 +292,7 @@ module.exports = function EasyFishing(mod) {
 		    		} else {
 		    			command.message('Failed to contact npc. Stopping...');
 						amFishing = false;
+						calculateFishCaught();
 		    		}
     			}
     		}, 5000);
@@ -265,10 +329,13 @@ module.exports = function EasyFishing(mod) {
 				
 				if (successCount == 0) {
 					if (mod.settings.autoDismantling) {
+						mod.settings.autoSelling = false;
+						command.message(`You've run out of Fish Fillets. Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
 						startDismantling();
 					} else {
 						command.message("Failed to auto craft. Stopping...");
 						amFishing = false;
+						calculateFishCaught();
 					}
 				} else {
 					mod.toServer('C_USE_ITEM', 3, { // use bait
@@ -292,6 +359,7 @@ module.exports = function EasyFishing(mod) {
 						} else {
 							command.message("Failed to auto fish. Stopping...");
 							amFishing = false;
+							calculateFishCaught();
 						}
 					}, 1000);
 				}
@@ -337,8 +405,12 @@ module.exports = function EasyFishing(mod) {
 									clearTimeout(timeout);
 									timeout = setTimeout(startDiscarding, 2000);
 								} else {
-									command.message(`Auto fishing stopping, cannot dismantle any more fish.`);
-									amFishing = false;
+									//command.message(`Auto fishing stopping, cannot dismantle any more fish.`);
+									//amFishing = false;
+									mod.settings.autoSelling = true;
+									command.message(`Max Fishing Fillets Reached. Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
+									clearTimeout(timeout);
+									timeout = setTimeout(startFishing, 2000);
 								}
 								return;
 							}
@@ -393,6 +465,13 @@ module.exports = function EasyFishing(mod) {
 	});
 
     mod.hook('S_INVEN', 16, event => {
+		for (const item of event.items){
+			if(RODS.includes(item.id)){
+				if(fishingRod == null || fishingRod == 206700) fishingRod = item.id;
+			}
+		}
+		
+		
     	if (!dismantling && !selling && !discarding) return;
 
     	if (waitingInventory) {
@@ -431,6 +510,7 @@ module.exports = function EasyFishing(mod) {
     			discarding = false;
     			command.message('Something really weird happened, could not discard filets. Stopping...');
 				amFishing = false;
+				calculateFishCaught();
     		}
     	}
     });
@@ -443,6 +523,7 @@ module.exports = function EasyFishing(mod) {
 		amFishing = false;
 		retryNumber = 0;
 		stopFishing = false;
+		fishingRod = null;
     });
 
     mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
@@ -465,6 +546,26 @@ module.exports = function EasyFishing(mod) {
         }
     });    
 
+	
+	mod.hook('S_START_FISHING_MINIGAME', 1, event => {
+		if (!mod.settings.enabled) return;
+		
+		//let eventgameId = BigInt(data.readUInt32LE(8)) | BigInt(data.readUInt32LE(12)) << 32n;
+		if(gameId === event.gameId){
+			let fishTier = event.level; //data.readUInt8(16);
+			//if(DELAY_BASED_ON_FISH_TIER) curTier = fishTier;
+			statFishedTiers[fishTier] = statFishedTiers[fishTier] ? statFishedTiers[fishTier]+1 : 1;
+			//console.log("size of statFishedTiers now: " + (Object.keys(statFishedTiers).length));
+			//console.log(statFishedTiers);
+			
+			//command.message("Started fishing minigame, Tier: " + fishTier);
+			//timer = setTimeout(catch_the_fish, (rng(ACTION_DELAY_FISH_CATCH)+(curTier*1000)));
+			//return false; // lets hide that minigame
+			return;
+		}
+	});
+
+	
     mod.hook('S_START_FISHING_MINIGAME', 'raw', (code, data) => {
         if (!mod.settings.enabled) return;
 		
@@ -480,7 +581,7 @@ module.exports = function EasyFishing(mod) {
             return false;
         }
     });
-
+	
     mod.hook('C_USE_ITEM', 3, event => {
     	if (RODS.includes(event.id)) {
 			if(pendingDeals.length){
@@ -493,6 +594,7 @@ module.exports = function EasyFishing(mod) {
 				if(stopFishing){ // so you don't have to wait an extra fish
 					stopFishing = false;
 					amFishing = false;
+					calculateFishCaught();
 					clearTimeout(timeout);
 					timeout = setTimeout(() => {
 						command.message("Fishing stopped.");
@@ -508,6 +610,7 @@ module.exports = function EasyFishing(mod) {
 				command.message("Fishing stopped.");
 				stopFishing = false;
 				amFishing = false;
+				calculateFishCaught();
 				return false;
 			}
 			
@@ -568,7 +671,7 @@ module.exports = function EasyFishing(mod) {
 			console.log(timeStamp() + "Logged Message");
 			console.log(tempMsg);
 		}
-    	if (!mod.settings.enabled || !amFishing) return;
+    	if (!mod.settings.enabled || (!amFishing && startTime == null)) return;
 		
     	const msg = mod.parseSystemMessage(event.message);
     	if (msg) {
@@ -603,6 +706,7 @@ module.exports = function EasyFishing(mod) {
     			} else {
     				command.message("Full inventory and no auto dismantling nor auto selling. Stopping...");
 					amFishing = false;
+					calculateFishCaught();
     			}
     		} else if (msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052') { // too many fish fillets
     			cannotDismantle = true;
@@ -616,6 +720,7 @@ module.exports = function EasyFishing(mod) {
 					command.message("Fishing area couldn't be found. Stopping...");
 					retryNumber = 0;
 					amFishing = false;
+					calculateFishCaught();
 				}
 			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE' && !negoWaiting){ // mounted
 				command.message("Can't fish while mounted. Retrying.");
@@ -627,6 +732,7 @@ module.exports = function EasyFishing(mod) {
 					command.message("Can't fish while mounted. Stopping...");
 					retryNumber = 0;
 					amFishing = false;
+					calculateFishCaught();
 				}
 			} else if(msg.id === 'SMT_BATTLE_SKILL_FAIL_COOL_TIME' || msg.id === 'SMT_SKILL_CANNOT_USE_ONCOMBAT'){ // using skill while trying to throw rod
 				command.message("Can't fish while using a skill. Retrying.");
@@ -638,11 +744,13 @@ module.exports = function EasyFishing(mod) {
 					command.message("Can't fish while using a skill. Stopping...");
 					retryNumber = 0;
 					amFishing = false;
+					calculateFishCaught();
 				}
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && stopFishing && !pendingDeals.length){ // intentionally stopping
 				command.message("Fishing stopped.");
 				stopFishing = false;
 				amFishing = false;
+				calculateFishCaught();
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && !pendingDeals.length){ // cancelled?
 				command.message("Fishing cancelled. Retrying.");
 				clearTimeout(timeout);
@@ -659,6 +767,7 @@ module.exports = function EasyFishing(mod) {
 					if(stopFishing){ // so you don't have to wait an extra fish
 						stopFishing = false;
 						amFishing = false;
+						calculateFishCaught();
 						clearTimeout(timeout);
 						timeout = setTimeout(() => {
 							command.message("Fishing stopped.");
@@ -689,6 +798,7 @@ module.exports = function EasyFishing(mod) {
 			} else if(msg.id === 'SMT_CANNOT_FISHING_NON_BAIT'){ // no bait
 				command.message("Can't fish without bait. Use a craftable bait then try again. Stopping...");
 				amFishing = false;
+				calculateFishCaught();
 			} else if(msg.id === 'SMT_PET_CANT_ACTION_ORDER'){ // using pet, sometimes sends no message and fishing stops
 				command.message("Can't fish while you're using a pet. Retrying.");
 				clearTimeout(timeout);
