@@ -91,7 +91,7 @@ module.exports = function EasyFishing(mod) {
 		return ("[" + timeText + "] ");
 	}
 	
-	command.add('easyfishing', {
+	command.add(['easyfishing', 'ef'], {
     	$default() {
     		mod.settings.enabled = !mod.settings.enabled;
         	command.message(`Easy fishing is now ${mod.settings.enabled ? "enabled" : "disabled"}.`);
@@ -437,6 +437,12 @@ module.exports = function EasyFishing(mod) {
 
     mod.hook('S_LOGIN', 12, event => {
         ({gameId} = event);
+		pendingDeals = [];
+		negoWaiting = false;
+		clearTimeout(timeout);
+		amFishing = false;
+		retryNumber = 0;
+		stopFishing = false;
     });
 
     mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
@@ -557,13 +563,14 @@ module.exports = function EasyFishing(mod) {
     });
 
     mod.hook('S_SYSTEM_MESSAGE', 1, event => {
+		if(consoleMsg){
+			let tempMsg = mod.parseSystemMessage(event.message);
+			console.log(timeStamp() + "Logged Message");
+			console.log(tempMsg);
+		}
     	if (!mod.settings.enabled || !amFishing) return;
 		
     	const msg = mod.parseSystemMessage(event.message);
-		if(consoleMsg){
-			console.log("Logged Message");
-			console.log(msg);
-		}
     	if (msg) {
     		if (mod.settings.autoCrafting && lastBait && msg.id === 'SMT_CANNOT_FISHING_NON_BAIT') { // out of bait
     			mod.toServer('C_USE_ITEM', 3, { // use bait
@@ -606,19 +613,30 @@ module.exports = function EasyFishing(mod) {
 				if(retryNumber < 4){
 					timeout = setTimeout(startFishing, 3000);
 				} else{
-					retryNumber = 0;
 					command.message("Fishing area couldn't be found. Stopping...");
+					retryNumber = 0;
 					amFishing = false;
 				}
 			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE' && !negoWaiting){ // mounted
 				command.message("Can't fish while mounted. Retrying.");
 				clearTimeout(timeout);
 				retryNumber++;
+				if(retryNumber < 3){
+					timeout = setTimeout(startFishing, 3000);
+				} else{
+					command.message("Can't fish while mounted. Stopping...");
+					retryNumber = 0;
+					amFishing = false;
+				}
+			} else if(msg.id === 'SMT_BATTLE_SKILL_FAIL_COOL_TIME' || msg.id === 'SMT_SKILL_CANNOT_USE_ONCOMBAT'){ // using skill while trying to throw rod
+				command.message("Can't fish while using a skill. Retrying.");
+				clearTimeout(timeout);
+				retryNumber++;
 				if(retryNumber < 2){
 					timeout = setTimeout(startFishing, 3000);
 				} else{
+					command.message("Can't fish while using a skill. Stopping...");
 					retryNumber = 0;
-					command.message("Can't fish while mounted. Stopping...");
 					amFishing = false;
 				}
 			} else if(msg.id === 'SMT_FISHING_RESULT_CANCLE' && stopFishing && !pendingDeals.length){ // intentionally stopping
@@ -683,7 +701,6 @@ module.exports = function EasyFishing(mod) {
 			} else if(msg.id === 'SMT_GENERAL_CANT_REG_ITEM_LIMIT'){ // can't have more fish fillets
 			} else if(msg.id === 'SMT_ITEM_DELETED'){ // deleted fish fillets
 			
-			} else if(msg.id === 'SMT_FISHING_RESULT_SUCCESS'){ // caught a fish
 			} else if(msg.id === 'SMT_ITEM_USED'){ // used banker summon
 			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_INSERT'){ // insert to bank
 			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_DRAW'){ // withdraw from bank
@@ -692,10 +709,20 @@ module.exports = function EasyFishing(mod) {
 			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGON_NO_MESSAGE'){ // guild member login, empty login message
 			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGON'){ // guild member logon with login message
 			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGOUT'){ // guild member logout
-			//} else if(msg.id === ''){ // guild quest accept
-			//} else if(msg.id === ''){ // guild quest success
+			} else if(msg.id === 'SMT_GQUEST_NORMAL_ACCEPT'){ // guild quest accept
+			} else if(msg.id === 'SMT_GQUEST_NORMAL_COMPLETE'){ // guild quest success
 			} else if(msg.id === 'SMT_GQUEST_NORMAL_FAIL_OVERTIME'){ // guild quest failed
-			} else if(msg.id === 'SMT_FISHING_REWARD'){ // someone caught a BAF
+			} else if(msg.id === 'SMT_BATTLEFIELD_JOIN_START'){ // 3s or gridiron now open
+			} else if(msg.id === 'SMT_BATTLEFIELD_JOIN_END'){ // 3s or gridiron now closed
+			} else if(msg.id === 'SMT_GQUEST_NORMAL_CARRYOUT'){ // advanced toward completion of the guild quest
+			} else if(msg.id === 'SMT_GUILD_WAR_DECLARE'){ // gvg declared
+			} else if(msg.id === 'SMT_GUILD_WAR_WITHDRAW'){ // gvg withdrew
+			} else if(msg.id === 'SMT_GUILD_WAR_SURRENDER'){ // gvg surrender
+			} else if(msg.id === 'SMT_GUILDWAR_CANT_SURRENDER_NO_AUTHORITY'){ // gvg can't surrender?
+			} else if(msg.id === 'SMT_GUILDWAR_ONGOING'){ // guild war happening
+			} else if(msg.id === 'SMT_GC_MSGBOX_APPLYRESULT_1'){ // guild member accepted person into the guild
+			} else if(msg.id === 'SMT_GC_MSGBOX_APPLYLIST_1'){ // join guild
+			} else if(msg.id === 'SMT_GUILD_LOG_LEAVE'){ // leave guild
 			} else if(msg.id === 'SMT_USE_ITEM_NO_EXIST'){ // item doesn't exist, aka lag when trading
 			} else if(msg.id === 'SMT_NO_ITEM'){ // no bait
 			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE'){ // can't craft more bait, or can't have more fish fillets
@@ -703,22 +730,71 @@ module.exports = function EasyFishing(mod) {
 			} else if(msg.id === 'SMT_ITEM_USED_DEACTIVE'){ // used bait off
 			} else if(msg.id === 'SMT_HIDDEN_QUEST_TASK_END'){ // completed vanguard
 			} else if(msg.id === 'SMT_MEDIATE_REG_SUCCESS_ITEM'){ // listed item onto broker
+			} else if(msg.id === 'SMT_MEDIATE_CONTRACT_BARGAIN'){ // nego for someone elses listed broker item
+			} else if(msg.id === 'SMT_CANNOT_CONTINUE_CONTRACT'){ // can't nego for someone elses listed broker item
 			} else if(msg.id === 'SMT_MEDIATE_SUCCESS_BUY'){ // bought item from broker
 			} else if(msg.id === 'SMT_MEDIATE_TRADE_FINISH_USE_MONEY'){ // pay for the brokered item
 			} else if(msg.id === 'SMT_MEDIATE_FAIL_CALCULATE'){ // too poor to buy from broker
 			} else if(msg.id === 'SMT_MEDIATE_CALCULATE'){ // broker thing before claim
 			} else if(msg.id === 'SMT_MEDIATE_CALCULATE_GET_ITEM'){ // get item from broker
 			} else if(msg.id === 'SMT_MEDIATE_CALCULATE_GET_MONEY'){ // get money from item sold on broker
+			} else if(msg.id === 'SMT_MEDIATE_DISCONNECT_CANCEL_OFFER_BY_ME'){ // cancel broker nego
 			} else if(msg.id === 'SMT_LOOTED_MONEY'){ // vendored fish
 			} else if(msg.id === 'SMT_ITEM_DECOMPOSE_COMPLETE'){ // dismantled fish
-			} else if(msg.id === 'SMT_BATTLE_SKILL_FAIL_COOL_TIME'){ // skill on cd
 			} else if(msg.id === 'SMT_FIELD_EVENT_WORLD_ANNOUNCE'){ // superior guardian mission
 			} else if(msg.id === 'SMT_PLAYTIME_TIMER'){ // you've been playing for x hours
 			} else if(msg.id === 'SMT_KOREAN_RATING_TEENAGER_PROHIBITED'){ // logs off koreans?
+			} else if(msg.id === 'SMT_VIPSYSTEM_GET_TOKEN'){ // log in tera rewards
+			} else if(msg.id === 'SMT_USING_ACCOUNT_BENEFIT'){ // log in buff?
+			} else if(msg.id === 'SMT_START_NPC_ARENA'){ // bamarama
+			} else if(msg.id === 'SMT_FRIEND_REQUEST'){ // sent friend request
+			} else if(msg.id === 'SMT_FRIEND_SOMEONE_ADDED_ME'){ // someone accepted friend request
+			} else if(msg.id === 'SMT_FISHING_REWARD'){ // someone caught a BAF
+			} else if(msg.id === 'SMT_FISHING_RESULT_SUCCESS'){ // caught a fish
+			} else if(msg.id === 'SMT_ITEM_USED_NOT_CONSUME'){ // use brooch
+			} else if(msg.id === 'SMT_CANNOT_GET_ITEM_FROM_WARE'){ // IDK bank stuff?
+			} else if(msg.id === 'SMT_WAREHOUSE_GOLD_DRAW'){ // withdraw gold from bank
+			} else if(msg.id === 'SMT_WAREHOUSE_GOLD_INSERT'){ // insert gold to bank
+			} else if(msg.id === 'SMT_WAREHOUSE_FULL'){ // bank full
+			} else if(msg.id === 'SMT_INVEN_FULL'){ // inventory full
+			} else if(msg.id === 'SMT_DROPDMG_DAMAGE'){ // fall damage
+			} else if(msg.id === 'SMT_OPPONENT_IS_BUSY'){ // can't duel, target busy
+			} else if(msg.id === 'SMT_BATTLE_START'){ // start duel
+			} else if(msg.id === 'SMT_BATTLE_END'){ // duel over
+			} else if(msg.id === 'SMT_BATTLE_RESURRECT'){ // res, after duel?
+			} else if(msg.id === 'SMT_GENERAL_NOT_IN_THE_WORLD'){ // /w offline player
+			} else if(msg.id === 'SMT_CHAT_LINKTEXT_DISCONNECT'){ // fail to link item in chat?
+			} else if(msg.id === 'SMT_CITYWAR_REWARD_RANKEXP'){ // CU guild exp
+			} else if(msg.id === 'SMT_GUILD_INCENTIVE_SUCCESS'){ // CU victory
+			} else if(msg.id === 'SMT_ACCOMPLISH_ACHIEVEMENT_GRADE_ALL'){ // achievement laurel achieved
+			} else if(msg.id === 'SMT_ARTISAN_CANT_PRODUCE_FULL_INVEN'){ // can't craft, inventory full
+			} else if(msg.id === 'SMT_BF_SEND_REWARD_TO_PARCEL'){ // full inventory, reward sent to mail
+			} else if(msg.id === 'SMT_DISMISS_PARTY_SUCCEED'){ // drop/disband party
+			} else if(msg.id === 'SMT_ACHIEVEMENT_CLEAR_MESSAGE_OPPONENT'){ // achievement something
+			} else if(msg.id === 'SMT_MEDIATE_CANT_CONTRACT_ALREADY_CONTRACT_OPPONENT'){ // reject trade
+			} else if(msg.id === 'SMT_FRIEND_RECEIVE_HELLO'){ // got greeted
+			} else if(msg.id === 'SMT_FRIEND_SOMEONE_REQUEST_ME'){ // friend request
+			} else if(msg.id === 'SMT_FRIEND_ADD_SUCCESS'){ // added friend
+			} else if(msg.id === 'SMT_ACCOMPLISH_ACHIEVEMENT_GRADE_GUILD'){ // +8
+			} else if(msg.id === 'SMT_PARTYBOARD_RECORDED_YOUR_LIST'){ // idk
+				console.log(timeStamp() + "Something fishy is going on here...");
+				console.log(msg);
+			} else if(msg.id === 'SMT_CUSTOMIZING_NOT_ENOUGH_CUSTOMIZING_SLOT'){ // idk
+				console.log(timeStamp() + "Something fishy is going on here...");
+				console.log(msg);
+			} else if(msg.id === 'SMT_GET_ENCHANT_SUCCEED'){ // something with enchanting
+				console.log(timeStamp() + "Something fishy is going on here...");
+				console.log(msg);
+			} else if(msg.id === 'SMT_TRADE_CANCEL'){ // IDK broker stuff?
+				console.log(timeStamp() + "Something fishy is going on here...");
+				console.log(msg);
 			} else {
 				console.log(timeStamp() + "Something fishy is going on here...");
 				console.log(msg);
 			}
+			// TODO make easyfishing cancel command
+			// TODO make easyfishing stop, stop during the retry messages
+			// TODO make easyfishing display message during all failure cases
     	}
     });
 	
