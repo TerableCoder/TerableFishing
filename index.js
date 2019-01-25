@@ -102,7 +102,7 @@ module.exports = function EasyFishing(mod) {
 	    	mod.settings.autoCrafting = !mod.settings.autoCrafting;
 	    	command.message(`Auto bait crafting is now ${mod.settings.autoCrafting ? "enabled" : "disabled"}.`);
     	},
-    	dismantle() {
+    	dismantle() { // add dismantleNow
         	mod.settings.autoDismantling = !mod.settings.autoDismantling;
     		command.message(`Auto dismantling fish is now ${mod.settings.autoDismantling ? "enabled" : "disabled"}.`);		
     	},
@@ -114,11 +114,11 @@ module.exports = function EasyFishing(mod) {
     		mod.settings.castDistance = validate(value, 0, 18, 3);
     		command.message(`Cast distance set to ${mod.settings.castDistance}.`);
     	},
-    	sell() {
+    	sell() { // add sellNow
         	mod.settings.autoSelling = !mod.settings.autoSelling;
     		command.message(`Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);	
     	},
-    	discard(amount) {
+    	discard(amount) { // making this false will swap you between auto sell and discarding
     		amount = parseInt(amount);
     		if (isNaN(amount)) {
     			mod.settings.discardFilets = !mod.settings.discardFilets;
@@ -464,7 +464,7 @@ module.exports = function EasyFishing(mod) {
 		}
 	});
 
-    mod.hook('S_INVEN', 16, event => {
+    mod.hook('S_INVEN', 17, event => {
 		for (const item of event.items){
 			if(RODS.includes(item.id)){
 				if(fishingRod == null || fishingRod == 206700) fishingRod = item.id;
@@ -811,6 +811,7 @@ module.exports = function EasyFishing(mod) {
 			} else if(msg.id === 'SMT_GENERAL_CANT_REG_ITEM_LIMIT'){ // can't have more fish fillets
 			} else if(msg.id === 'SMT_ITEM_DELETED'){ // deleted fish fillets
 			
+			} else if(msg.id === 'SMT_MEDIATE_TRADE_CANCEL_ME'){ // negotiation canceled 
 			} else if(msg.id === 'SMT_ITEM_USED'){ // used banker summon
 			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_INSERT'){ // insert to bank
 			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_DRAW'){ // withdraw from bank
@@ -886,6 +887,9 @@ module.exports = function EasyFishing(mod) {
 			} else if(msg.id === 'SMT_FRIEND_SOMEONE_REQUEST_ME'){ // friend request
 			} else if(msg.id === 'SMT_FRIEND_ADD_SUCCESS'){ // added friend
 			} else if(msg.id === 'SMT_ACCOMPLISH_ACHIEVEMENT_GRADE_GUILD'){ // +8
+			} else if(msg.id === 'SMT_TRADE_BROKER_CANT_SEARCH_ALL'){ // empty broker search
+			} else if(msg.id === 'SMT_INVEN_NOT_ENOUGH_MONEY'){ // too poor to buy item
+			} else if(msg.id === 'SMT_PARTY_LOOT_ITEM_PARTYPLAYER'){ // party member got fish
 			} else if(msg.id === 'SMT_PARTYBOARD_RECORDED_YOUR_LIST'){ // idk
 				console.log(timeStamp() + "Something fishy is going on here...");
 				console.log(msg);
