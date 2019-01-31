@@ -164,6 +164,16 @@ module.exports = function EasyFishing(mod) {
 			clearTimeout(timeout);
 			timeout = setTimeout(startFishing, 1000);
     	},
+		snow() {
+        	stopFishing = true;
+    		command.message(`Selling, Fishing Once, Then Stopping...`);	
+			startSelling();
+    	},
+		dnow() {
+        	stopFishing = true;
+    		command.message(`Dismantling, Fishing Once, Then Stopping...`);	
+			startDismantling();
+    	},
 		consoleMsg() {
         	consoleMsg = !consoleMsg;
     		command.message(`consoleMsg = ${consoleMsg ? "enabled" : "disabled"}.`);			
@@ -407,10 +417,14 @@ module.exports = function EasyFishing(mod) {
 								} else {
 									//command.message(`Auto fishing stopping, cannot dismantle any more fish.`);
 									//amFishing = false;
-									mod.settings.autoSelling = true;
-									command.message(`Max Fishing Fillets Reached. Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
 									clearTimeout(timeout);
-									timeout = setTimeout(startFishing, 2000);
+									timeout = mod.setTimeout(() => {
+										startDiscarding();
+										mod.setTimeout(() => {
+											mod.settings.autoSelling = true;
+											command.message(`Max Fishing Fillets Reached. Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
+										}, 20000);
+									}, 2000);
 								}
 								return;
 							}
@@ -906,9 +920,12 @@ module.exports = function EasyFishing(mod) {
 				console.log(timeStamp() + "Something fishy is going on here...");
 				console.log(msg);
 			}
-			// TODO make easyfishing cancel command
+			// TODO make easyfishing cancel command, jk hard af
 			// TODO make easyfishing stop, stop during the retry messages
 			// TODO make easyfishing display message during all failure cases
+			// ef dismantleNow/sellNow
+			// see if ef start works while fishing? maybe~
+			// fix fish tier # and salad reapplying after porting
     	}
     });
 	
