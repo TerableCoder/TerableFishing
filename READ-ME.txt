@@ -14,4 +14,7 @@ Commands:
 !easyfishing discard - Toggles discarding fish filets when reaching 10k.
 !easyfishing discard XXXX - Set the amount of fish filets to discard.
 !easyfishing salad - Toggles auto reuse of fish salad when the buff is gone (Have to use the first one manually. It will refresh after it's if you're fishing.)
+!easyfishing start - Throws rod and starts fish logging. 
 !easyfishing stop - Stops fishing after finished with the current fish and all pending brokerage. Can also cancel rod after typing "easyfishing stop" to cancel faster.
+!easyfishing snow - Sells now, then throws rod, then stops
+!easyfishing dnow - Dismantles now, then throws rod, then stops
