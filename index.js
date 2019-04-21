@@ -715,12 +715,12 @@ module.exports = function EasyFishing(mod){
 	mod.hook('S_START_FISHING_MINIGAME', 1, event => {
 		if(!mod.settings.enabled) return;
 		
-		if(gameId === event.gameId){
+		/*if(gameId === event.gameId){
 			let fishTier = salidActive ? event.level+3 : event.level; //data.readUInt8(16); // if salad, add 3 difficulty
-			//statFishedTiers[fishTier] = statFishedTiers[fishTier] ? statFishedTiers[fishTier]+1 : 1;
+			statFishedTiers[fishTier] = statFishedTiers[fishTier] ? statFishedTiers[fishTier]+1 : 1;
 			command.message("Started fishing minigame, Tier " + fishTier);
 			return;
-		}
+		}*/
 	});
 	
 	mod.hook('S_SYSTEM_MESSAGE_LOOT_ITEM', 1, event => {
