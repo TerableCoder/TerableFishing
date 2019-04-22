@@ -21,6 +21,7 @@ Commands:
 !easyfishing worm - Toggles worm discarding
 !easyfishing worm (amount) - Sets the threshold for worm discarding
 !easyfishing baf - Toggle selling/dismantling of BAF so that you can turn them into the merchant for 10x the price
+!easyfishing status - Displays the state of all variables
 
 Added rod spam protection and it notifies you using tera-notifier if it activates
 Also notifies you if you're tabbed out and fishing stops
