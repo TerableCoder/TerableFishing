@@ -16,5 +16,12 @@ Commands:
 !easyfishing salad - Toggles auto reuse of fish salad when the buff is gone (Have to use the first one manually. It will refresh after it's if you're fishing.)
 !easyfishing start - Throws rod and starts fish logging. 
 !easyfishing stop - Stops fishing after finished with the current fish and all pending brokerage. Can also cancel rod after typing "easyfishing stop" to cancel faster.
-!easyfishing snow - Sells now, then throws rod, then stops
-!easyfishing dnow - Dismantles now, then throws rod, then stops
+!easyfishing snow - Sells now
+!easyfishing dnow - Dismantles now
+!easyfishing worm - Toggles worm discarding
+!easyfishing worm (amount) - Sets the threshold for worm discarding
+!easyfishing baf - Toggle selling/dismantling of BAF so that you can turn them into the merchant for 10x the price
+
+Added rod spam protection and it notifies you using tera-notifier if it activates
+Also notifies you if you're tabbed out and fishing stops
+Improved fish logging and added skill tome logging
