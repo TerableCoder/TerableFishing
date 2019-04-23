@@ -315,6 +315,16 @@ module.exports = function EasyFishing(mod){
     		unk: 0
     	});
     }
+	
+	mod.game.on('leave_game', () => {
+        pendingDeals = [];
+		negoWaiting = false;
+		clearTimeout(timeout);
+		amFishing = false;
+		retryNumber = 0;
+		stopFishing = false;
+		fishingRod = null;
+    });
 
     function startFishing(){
 		if(!throwTime) throwTime = new Date().getTime(); // protect from rod spam
@@ -322,7 +332,7 @@ module.exports = function EasyFishing(mod){
 		let ms = new Date().getTime() - throwTime;
 		let totalSeconds = Math.floor(ms / 1000);
 		if(totalSeconds > 60){
-			if(numThrows > 10){
+			if(numThrows > 8){
 				stopFishing = true;
 				command.message(`Your rod is spamming, I'm fixing it now.`);	
 				if(notifier) notifier.message(`Your rod is spamming, I'm fixing it now.`);
