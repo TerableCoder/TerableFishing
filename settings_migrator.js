@@ -2,6 +2,7 @@ const DefaultSettings = {
 	"enabled": true,
 	"worm": true,
 	"X": 10,
+	"BAF": true,
 	"autoCrafting": true,
     "autoDismantling": true,
     "autoSelling": false,
