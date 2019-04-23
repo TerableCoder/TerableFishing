@@ -1,28 +1,3 @@
 Move the files inside "defs" folder to the folder node_modules/tera-data/protocol.
 
 Also for NA/EU/SEA/TW download the files according to your server from #opcodes and move it to node_modules/tera-data/map. (or merge their contents if you already have custom opcodes.)
-
-This version is completely compatible with auto-nego! Fish like a brokerage god with https://github.com/Owyn/auto-nego
-
-Commands:
-!easyfishing - Toggles the module on and off.
-!easyfishing craft - Toggles auto bait crafting.
-!easyfishing dismantle - Toggles auto fish dismantling.
-!easyfishing delay - Toggles random delay for catching and adding items to dismantle ui.
-!easyfishing distance [0, 18] - Sets cast distance from 0 to 18 (Keep in mind, anything above 3 is not possible without a module.)
-!easyfishing sell - Toggles auto selling (You have to be close to a merchant, and open it's selling UI before fishing.)
-!easyfishing discard - Toggles discarding fish filets when reaching 10k.
-!easyfishing discard XXXX - Set the amount of fish filets to discard.
-!easyfishing salad - Toggles auto reuse of fish salad when the buff is gone (Have to use the first one manually. It will refresh after it's if you're fishing.)
-!easyfishing start - Throws rod and starts fish logging. 
-!easyfishing stop - Stops fishing after finished with the current fish and all pending brokerage. Can also cancel rod after typing "easyfishing stop" to cancel faster.
-!easyfishing snow - Sells now
-!easyfishing dnow - Dismantles now
-!easyfishing worm - Toggles worm discarding
-!easyfishing worm (amount) - Sets the threshold for worm discarding
-!easyfishing baf - Toggle selling/dismantling of BAF so that you can turn them into the merchant for 10x the price
-!easyfishing status - Displays the state of all variables
-
-Added rod spam protection and it notifies you using tera-notifier if it activates
-Also notifies you if you're tabbed out and fishing stops
-Improved fish logging and added skill tome logging

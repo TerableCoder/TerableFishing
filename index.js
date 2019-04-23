@@ -108,28 +108,24 @@ module.exports = function EasyFishing(mod){
     	$none(){
     		mod.settings.enabled = !mod.settings.enabled;
         	command.message(`Easy fishing is now ${mod.settings.enabled ? "enabled" : "disabled"}.`);
+			mod.saveSettings();
     	},
     	craft(){
 	    	mod.settings.autoCrafting = !mod.settings.autoCrafting;
 	    	command.message(`Auto bait crafting is now ${mod.settings.autoCrafting ? "enabled" : "disabled"}.`);
-    	},
-    	dismantle(){ // add dismantleNow
-        	mod.settings.autoDismantling = !mod.settings.autoDismantling;
-    		command.message(`Auto dismantling fish is now ${mod.settings.autoDismantling ? "enabled" : "disabled"}.`);		
+			mod.saveSettings();
     	},
     	delay(){
     		mod.settings.useRandomDelay = !mod.settings.useRandomDelay;
     		command.message(`Random delay is now ${mod.settings.useRandomDelay ? "enabled" : "disabled"}.`);
+			mod.saveSettings();
     	},
     	distance(value){
     		mod.settings.castDistance = validate(value, 0, 18, 3);
     		command.message(`Cast distance set to ${mod.settings.castDistance}.`);
+			mod.saveSettings();
     	},
-    	sell(){ // add sellNow
-        	mod.settings.autoSelling = !mod.settings.autoSelling;
-    		command.message(`Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);	
-    	},
-    	discard(amount){ // making this false will swap you between auto sell and discarding
+		discard(amount){ // making this false will swap you between auto sell and discarding
     		amount = parseInt(amount);
     		if(isNaN(amount)){
     			mod.settings.discardFilets = !mod.settings.discardFilets;
@@ -138,11 +134,25 @@ module.exports = function EasyFishing(mod){
     			mod.settings.discardCount = amount;
     			command.message(`Discard filets count set to ${mod.settings.discardCount}.`);
     		}
+			mod.saveSettings();
+    	},
+    	dismantle(){
+        	dismantleCommand();
+    	},
+    	d(){
+        	dismantleCommand();
+    	},
+    	sell(){
+        	sellCommand();
+    	},
+    	s(){
+        	sellCommand();
     	},
     	salad(){
         	mod.settings.reUseFishSalad = !mod.settings.reUseFishSalad;
         	if(!mod.settings.reUseFishSalad) useSalad = false;
-    		command.message(`Reuse fish salad is now ${mod.settings.reUseFishSalad ? "enabled" : "disabled"}.`);			
+    		command.message(`Reuse fish salad is now ${mod.settings.reUseFishSalad ? "enabled" : "disabled"}.`);
+			mod.saveSettings();			
     	},
 		stop(){
         	stopFishing = true;
@@ -179,27 +189,31 @@ module.exports = function EasyFishing(mod){
 			stopFishing = false;
 			startTime = new Date().getTime();
     		command.message(`Fish logging started.`);
-			clearTimeout(timeout);
-			timeout = setTimeout(startFishing, 1000);
+			if(!amFishing){
+				clearTimeout(timeout);
+				timeout = setTimeout(startFishing, 1000);
+			}
     	},
 		snow(){
         	stopFishing = true;
-    		command.message(`Selling, Fishing Once, Then Stopping...`);	
+    		command.message(`Selling Fish`);	
 			startSelling();
     	},
 		dnow(){
         	stopFishing = true;
-    		command.message(`Dismantling, Fishing Once, Then Stopping...`);	
+    		command.message(`Dismantling Fish`);	
 			startDismantling();
     	},
 		consoleMsg(){
         	consoleMsg = !consoleMsg;
-    		command.message(`consoleMsg = ${consoleMsg ? "enabled" : "disabled"}.`);			
+    		command.message(`consoleMsg = ${consoleMsg ? "enabled" : "disabled"}.`);
+			mod.saveSettings();			
     	},
 		worm(y){
 			if(!y){
 				mod.settings.worm = !mod.settings.worm;
 				command.message(`Worm-Deleter is now ${mod.settings.worm ? "enabled" : "disabled"}.`);
+				mod.saveSettings();
 			} else if(isNaN(y) || y < 1){
 				command.message(`${y} is an invalid argument. Type something like: ef worms 10`);
 			} else{
@@ -210,22 +224,38 @@ module.exports = function EasyFishing(mod){
     	},
 		baf(){
 			mod.settings.BAF = !mod.settings.BAF;
-    		command.message(`Keeping BAFs is now ${mod.settings.BAF ? "enabled" : "disabled"}.`);	
+    		command.message(`Keeping BAFs is now ${mod.settings.BAF ? "enabled" : "disabled"}.`);
+			mod.saveSettings();
     	},
 		status(){
         	command.message(`Easy fishing is ${mod.settings.enabled ? "enabled" : "disabled"}.`);
     		command.message(`Selling ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
     		command.message(`Dismantling ${mod.settings.autoDismantling ? "enabled" : "disabled"}.`);	
-    		command.message(`Discard ${mod.settings.discardFilets ? "enabled" : "disabled"} at ${mod.settings.discardCount}.`);
+    		command.message(`Discard ${mod.settings.discardCount} Fish Fillets ${mod.settings.discardFilets ? "enabled" : "disabled"}.`);
 	    	command.message(`Bait crafting ${mod.settings.autoCrafting ? "enabled" : "disabled"}.`);
     		command.message(`Delay ${mod.settings.useRandomDelay ? "enabled" : "disabled"}.`);
     		command.message(`Cast distance ${mod.settings.castDistance}.`);
     		command.message(`Salad ${mod.settings.reUseFishSalad ? "enabled" : "disabled"}.`);
     		command.message(`BAFs ${mod.settings.BAF ? "enabled" : "disabled"}.`);	
-			command.message(`Worm-Deleter ${mod.settings.worm ? "enabled" : "disabled"} at ${mod.settings.X}.`);
+			command.message(`Deleting ${mod.settings.worm ? "enabled" : "disabled"} at ${mod.settings.X} worms.`);
     	}
     });
 	
+	function dismantleCommand(){
+		mod.settings.autoDismantling = !mod.settings.autoDismantling;
+		mod.settings.autoSelling = !mod.settings.autoDismantling;
+		command.message(`Auto dismantling fish is now ${mod.settings.autoDismantling ? "enabled" : "disabled"}.`);
+		command.message(`Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
+		mod.saveSettings();
+	}
+	
+    function sellCommand(){
+		mod.settings.autoSelling = !mod.settings.autoSelling;
+		mod.settings.autoDismantling = !mod.settings.autoSelling;
+		command.message(`Auto dismantling fish is now ${mod.settings.autoDismantling ? "enabled" : "disabled"}.`);
+		command.message(`Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
+		mod.saveSettings();
+	}
 	
 	function calculateFishCaught(){
 		//mod.toServer('C_STOP_FISHING', 1, {});
@@ -306,10 +336,12 @@ module.exports = function EasyFishing(mod){
 			amFishing = false;
 			calculateFishCaught();
 		} else if(stopFishing){
-			command.message('Fishing Stopped.');
+			stopFishing = false;
+			command.message('Fishing stopped.');
 			amFishing = false;
 			calculateFishCaught();
 		} else{
+			amFishing = true;
 			mod.toServer('C_USE_ITEM', 3, { // use rod
 				gameId,
 				id: fishingRod,
@@ -391,7 +423,7 @@ module.exports = function EasyFishing(mod){
     			if(dialogHook){
     				mod.unhook(dialogHook);
     				selling = false;
-    				command.message("Failed to contact npc.");
+    				//command.message("Failed to contact npc.");
 		    		if(mod.settings.autoDismantling){
 		    			command.message('Failed to contact npc. Dismantling...');
 		    			startDismantling();
@@ -434,11 +466,15 @@ module.exports = function EasyFishing(mod){
 				crafting = false;
 				
 				if(successCount == 0){
-					if(mod.settings.autoDismantling){
-						if(mod.settings.autoSelling){
-							mod.settings.autoSelling = false;
-							command.message(`You've run out of Fish Fillets. Auto selling fish is now disabled.`);
-						}
+					/*if(mod.settings.autoDismantling){
+						mod.settings.autoSelling = false;
+						if(mod.settings.autoSelling) command.message(`You've run out of Fish Fillets. Auto selling fish is now disabled.`);
+						startDismantling();
+					} else if(!mod.settings.discardFilets){*/
+					if(!mod.settings.discardFilets){
+						mod.settings.autoSelling = false;
+						mod.settings.autoDismantling = true;
+						command.message(`You've run out of Fish Fillets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
 						startDismantling();
 					} else{
 						command.message("Failed to auto craft. Stopping...");
@@ -513,17 +549,11 @@ module.exports = function EasyFishing(mod){
 									clearTimeout(timeout);
 									timeout = setTimeout(startDiscarding, 2000);
 								} else{
-									//command.message(`Auto fishing stopping, cannot dismantle any more fish.`);
-									//amFishing = false;
 									clearTimeout(timeout);
 									timeout = mod.setTimeout(() => {
-										/*startDiscarding();
-										mod.setTimeout(() => {
-											mod.settings.autoSelling = true;
-											command.message(`Max Fishing Fillets Reached. Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
-										}, 20000);*/
+										mod.settings.autoDismantling = false;
 										mod.settings.autoSelling = true;
-										command.message(`Max Fishing Fillets Reached. Auto selling fish is now ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
+										command.message(`Max Fishing Fillets Reached. Auto selling fish is now enabled. Auto dismantling fish is now disabled.`);
 										startSelling();
 									}, 2000);
 								}
@@ -540,7 +570,8 @@ module.exports = function EasyFishing(mod){
 									id: event.id
 								});
 								clearTimeout(timeout);
-								timeout = setTimeout(startFishing, 2000);
+								//timeout = setTimeout(startFishing, 2000);
+								timeout = setTimeout(checkBaitCount, 2000);
 							}
 						}, 3000);
 					}, delay);
@@ -689,6 +720,11 @@ module.exports = function EasyFishing(mod){
 		retryNumber = 0;
 		stopFishing = false;
 		fishingRod = null;
+		if((mod.settings.autoDismantling && mod.settings.autoSelling) || (!mod.settings.autoDismantling && !mod.settings.autoSelling)){ // don't allow both to be the same
+			mod.settings.autoDismantling = true;
+			mod.settings.autoSelling = false;
+			mod.saveSettings();
+		}
     });
 
     mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
@@ -1097,10 +1133,12 @@ module.exports = function EasyFishing(mod){
 			}
 			// TODO make easyfishing cancel command, jk hard af~
 			// TODO make easyfishing display message during all failure cases ~ maybe~
-			// see if ef start works while fishing? maybe~
+			// see if ef start works while fishing? added but untested
 			// make it not try to Dismantle and Sell at same time
 			// make nego ing someone or getting summoned not make your rod spazm
 			// add nego to EF
+			// add make logging write to a file
+			// alternate between sell and dismantle 
     	}
     });
 	
