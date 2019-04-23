@@ -1,6 +1,16 @@
 # Easy-Fishing-5.2
 Original version made by https://github.com/terastuff/easy-fishing
 
+Move the files inside "defs" folder to the folder node_modules/tera-data/protocol.
+
+Also move files inside "map" folder to node_modules/tera-data/map. (or merge their contents if you already have custom opcodes.)
+
+REMOVE item-cache module, otherwise this module will sell/dismantle.
+
+DISABLE instant dismantle from instant-everything, otherwise dismantle will not work.
+
+
+
 # Existing Commands/Functions from 3.0
 !ef - Toggles the module on and off.
 
