@@ -1,4 +1,4 @@
-# Easy-Fishing-5.0
+# Easy-Fishing-5.2
 Original version made by https://github.com/terastuff/easy-fishing
 
 # Existing Commands/Functions from 3.0
