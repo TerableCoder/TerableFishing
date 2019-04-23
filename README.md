@@ -6,13 +6,13 @@ Original version made by https://github.com/terastuff/easy-fishing
 
 !ef craft - Toggles auto bait crafting.
 
-!ef dismantle - Toggles auto fish dismantling.
-
 !ef delay - Toggles random delay for catching and adding items to dismantle ui.
 
 !ef distance [0, 18] - Sets cast distance from 0 to 18 (Keep in mind, anything above 3 is not possible without a module.)
 
-!ef sell - Toggles auto selling (You have to be close to a merchant, and open it's selling UI before fishing.)
+!ef s/dismantle - Toggles auto fish dismantling.
+
+!ef s/sell - Toggles auto selling (You have to be close to a merchant, and open it's selling UI before fishing.)
 
 !ef discard - Toggles discarding fish filets when reaching 10k.
 
