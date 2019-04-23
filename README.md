@@ -16,7 +16,7 @@ Original version made by https://github.com/terastuff/easy-fishing
 
 !ef discard - Toggles discarding fish filets when reaching 10k.
 
-!ef discard XXXX - Set the amount of fish filets to discard.
+!ef discard (amount) - Set the amount of fish filets to discard.
 
 !ef salad - Toggles auto reuse of fish salad when the buff is gone (Have to use the first one manually. It will refresh after it's if you're fishing.)
 
