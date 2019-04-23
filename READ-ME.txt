@@ -1,3 +1,0 @@
-Move the files inside "defs" folder to the folder node_modules/tera-data/protocol.
-
-Also for NA/EU/SEA/TW download the files according to your server from #opcodes and move it to node_modules/tera-data/map. (or merge their contents if you already have custom opcodes.)
