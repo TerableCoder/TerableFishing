@@ -1,9 +1,9 @@
 {
     "disableAutoUpdate": false,
-    "name": "easy-fishing",
+    "name": "TerableFishing",
     "author": "KTC, TerableCoder",
     "description": "NextGen easy-fishing. Module to auto fish",
-    "version": "4.6",
+    "version": "5.4",
     "options": {
         "settingsVersion": 4,
         "settingsFile": "config.json",

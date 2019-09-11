@@ -1,4 +1,4 @@
-# Easy-Fishing-5.2
+# TerableFishing-5.4
 Original version made by https://github.com/terastuff/easy-fishing
 
 Move the files inside "defs" folder to the folder node_modules/tera-data/protocol.
