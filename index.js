@@ -292,7 +292,15 @@ module.exports = function TerableFishing(mod){
     }
 	
     function startFishing(){
-		if(dismantling || selling) return; // TODO make this a setTimeout so that I can detect my dismantle bugging ~ just block rod throws during it ~ time to test
+		//if(dismantling || selling) return; // TODO make this a setTimeout so that I can detect my dismantle bugging ~ just block rod throws during it ~ time to test
+		if(dismantling || selling){
+			timeout = setTimeout(() => {
+				dismantling = false;
+				selling = false;
+				startFishing();
+			}, 30000);
+			return; // TODO make this a setTimeout so that I can detect my dismantle bugging ~ just block rod throws during it ~ time to test
+		}
 		if(!throwTime) throwTime = new Date().getTime(); // protect from rod spam
 		numThrows++;
 		let ms = new Date().getTime() - throwTime;
@@ -470,8 +478,12 @@ module.exports = function TerableFishing(mod){
     	Object.assign(lastDialog, event);
     });
 
-    mod.hook('C_CAST_FISHING_ROD', 'raw', (code, data) => {
+    /*mod.hook('C_CAST_FISHING_ROD', 'raw', (code, data) => {
     	data[20] = validate(mod.settings.castDistance, 0, 18, 3);
+    	return true;
+    });*/
+    mod.hook('C_CAST_FISHING_ROD', 1, event => {
+    	event.dist = validate(mod.settings.castDistance, 0, 18, 3);
     	return true;
     });
 
@@ -680,9 +692,11 @@ module.exports = function TerableFishing(mod){
 					if(mod.settings[selling ? "autoSellFishes" : "autoDismantleFishes"].find(id => id == item.id)){
 						itemsToProcess.push({dbid: item.dbid, id: item.id, slot: item.slot});
 					} else if(mod.settings.worm && WormId.includes(item.id) && item.amount >= mod.settings.X){
-						mod.toServer('C_DEL_ITEM', 2, {
+						mod.toServer('C_DEL_ITEM', 3, {
 							gameId: mod.game.me.gameId,
-							slot: (item.slot - 40),
+							pocket: 0,
+							//slot: (item.slot - 40),
+							slot: (item.slot),
 							amount: item.amount
 						});
 					}
@@ -709,9 +723,11 @@ module.exports = function TerableFishing(mod){
     			if(item.id == 204052){
     				discarding = false;
 					command.message(`Discarding ${mod.settings.discardCount} filets.`);
-    				mod.send('C_DEL_ITEM', 2, {
+    				mod.send('C_DEL_ITEM', 3, {
 						gameId: mod.game.me.gameId,
-						slot: item.slot - 40,
+						pocket: 0,
+						//slot: item.slot - 40,
+						slot: item.slot,
 						amount: Math.min(item.amount, mod.settings.discardCount)
 					});
 					clearTimeout(timeout);
