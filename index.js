@@ -20,6 +20,10 @@ const WormId = [206005, 206006, 206007, 206008, 206009];
 const AnglerToken = 204051;
 const SkillTome = [209901, 209902, 209903, 209904];
 
+const ITEMS_BANKER = [60264, 160326, 170003, 210111, 216754];
+const TEMPLATE_BANKER = 1962;
+const FILET_ID = 204052;
+
 module.exports = function TerableFishing(mod){
 	const command = mod.command || mod.require.command;
 	
@@ -65,7 +69,18 @@ module.exports = function TerableFishing(mod){
 		skillTomeTiers = {},
 		startTime = null,
 		throwTime = null,
-		numThrows = 0;
+		numThrows = 0,
+		scrollsInCooldown = false,
+		needToBank = false,
+		banking = false,
+		skill = {
+			reserved: 0,
+			npc: false,
+			type: 1,
+			huntingZoneId: 0,
+			id: 60401306
+		},
+		request = {};
 
     function rand([min, max], lowerBound){
     	lowerBound = isNaN(lowerBound) ? Number.NEGATIVE_INFINITY : lowerBound;
@@ -125,6 +140,11 @@ module.exports = function TerableFishing(mod){
     		}
 			mod.saveSettings();
     	},
+		bankf(){ // only works while dismantling
+    		mod.settings.bankFilet = !mod.settings.bankFilet;
+    		command.message(`Bank Filet is now ${mod.settings.bankFilet ? "enabled" : "disabled"}.`);
+			mod.saveSettings();
+    	},
     	dismantle(){
         	dismantleSellCommand();
     	},
@@ -164,7 +184,7 @@ module.exports = function TerableFishing(mod){
     	},
 		start(){
 			if(mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)){
-				mod.toClient('S_CHAT', 2, { channel: 21, authorName: '', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
+				mod.toClient('S_CHAT', 3, { channel: 21, name: '', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
 			}
 			statFishedTiers = {};
 			skillTomeTiers = {};
@@ -217,7 +237,8 @@ module.exports = function TerableFishing(mod){
         	command.message(`Terable fishing is ${mod.settings.enabled ? "enabled" : "disabled"}.`);
     		command.message(`Selling ${mod.settings.autoSelling ? "enabled" : "disabled"}.`);
     		command.message(`Dismantling ${mod.settings.autoDismantling ? "enabled" : "disabled"}.`);	
-    		command.message(`Discard ${mod.settings.discardCount} Fish Fillets ${mod.settings.discardFilets ? "enabled" : "disabled"}.`);
+    		command.message(`Bank Filet ${mod.settings.bankFilet ? "enabled" : "disabled"}.`);	
+    		command.message(`Discard ${mod.settings.discardCount} Fish Filets ${mod.settings.discardFilets ? "enabled" : "disabled"}.`);
 	    	command.message(`Bait crafting ${mod.settings.autoCrafting ? "enabled" : "disabled"}.`);
     		command.message(`Delay ${mod.settings.useRandomDelay ? "enabled" : "disabled"}.`);
     		command.message(`Cast distance ${mod.settings.castDistance}.`);
@@ -445,7 +466,7 @@ module.exports = function TerableFishing(mod){
     	}
     }
 	
-	mod.hook('S_LOGIN', 13, event => {
+	mod.hook('S_LOGIN', 14, event => {
 		pendingDeals = [];
 		negoWaiting = false;
 		clearTimeout(timeout);
@@ -499,7 +520,7 @@ module.exports = function TerableFishing(mod){
 					if(!mod.settings.discardFilets){
 						mod.settings.autoSelling = false;
 						mod.settings.autoDismantling = true;
-						command.message(`You've run out of Fish Fillets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
+						command.message(`You've run out of Fish Filets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
 						startDismantling();
 					} else{
 						command.message("Failed to auto craft. Stopping...");
@@ -568,7 +589,10 @@ module.exports = function TerableFishing(mod){
 									id: event.id
 								});
 
-								if(mod.settings.discardFilets && mod.settings.discardCount > 0){
+								if(mod.settings.bankFilet){
+									clearTimeout(timeout);
+									timeout = setTimeout(startBanking, 2000);
+								} else if(mod.settings.discardFilets && mod.settings.discardCount > 0){
 									clearTimeout(timeout);
 									timeout = setTimeout(startDiscarding, 2000);
 								} else{
@@ -576,7 +600,7 @@ module.exports = function TerableFishing(mod){
 									timeout = mod.setTimeout(() => {
 										mod.settings.autoDismantling = false;
 										mod.settings.autoSelling = true;
-										command.message(`Max Fishing Fillets Reached. Auto selling fish is now enabled. Auto dismantling fish is now disabled.`);
+										command.message(`Max Fishing Filets Reached. Auto selling fish is now enabled. Auto dismantling fish is now disabled.`);
 										startSelling();
 									}, 2000);
 								}
@@ -723,7 +747,7 @@ module.exports = function TerableFishing(mod){
     			if(item.id == 204052){
     				discarding = false;
 					command.message(`Discarding ${mod.settings.discardCount} filets.`);
-    				mod.send('C_DEL_ITEM', 3, {
+    				mod.toServer('C_DEL_ITEM', 3, {
 						gameId: mod.game.me.gameId,
 						pocket: 0,
 						//slot: item.slot - 40,
@@ -854,7 +878,7 @@ module.exports = function TerableFishing(mod){
 			amFishing = true;
 
 			if(mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)){
-				mod.toClient('S_CHAT', 2, { channel: 21, authorName: '', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
+				mod.toClient('S_CHAT', 3, { channel: 21, name: '', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
 			}
 		}
 	});
@@ -913,7 +937,7 @@ module.exports = function TerableFishing(mod){
     			//} else if(mod.settings.autoDismantling && !dismantling){
     				startDismantling();
     			}
-    		} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052'){ // too many fish fillets
+    		} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052'){ // too many fish filets
     			cannotDismantle = true;
     		} else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA' && !negoWaiting){ // non-fishing area bug
 				command.message("Non-fishing area bug? Retrying.");
@@ -995,9 +1019,9 @@ module.exports = function TerableFishing(mod){
 			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE'){ // mounted while negoWaiting
 			} else if(msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // sold item with more deals to finish
 			
-			} else if(msg.id === 'SMT_CANNOT_HAVE_MORE_ITEMS'){ // can't have more fish fillets
-			} else if(msg.id === 'SMT_GENERAL_CANT_REG_ITEM_LIMIT'){ // can't have more fish fillets
-			} else if(msg.id === 'SMT_ITEM_DELETED'){ // deleted fish fillets
+			} else if(msg.id === 'SMT_CANNOT_HAVE_MORE_ITEMS'){ // can't have more fish filets
+			} else if(msg.id === 'SMT_GENERAL_CANT_REG_ITEM_LIMIT'){ // can't have more fish filets
+			} else if(msg.id === 'SMT_ITEM_DELETED'){ // deleted fish filets
 			
 			} else if(msg.id === 'SMT_MEDIATE_TRADE_CANCEL_ME'){ // negotiation canceled 
 			} else if(msg.id === 'SMT_ITEM_USED'){ // used banker summon
@@ -1024,7 +1048,7 @@ module.exports = function TerableFishing(mod){
 			} else if(msg.id === 'SMT_GUILD_LOG_LEAVE'){ // leave guild
 			} else if(msg.id === 'SMT_USE_ITEM_NO_EXIST'){ // item doesn't exist, aka lag when trading
 			} else if(msg.id === 'SMT_NO_ITEM'){ // no bait
-			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE'){ // can't craft more bait, or can't have more fish fillets
+			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE'){ // can't craft more bait, or can't have more fish filets
 			} else if(msg.id === 'SMT_ITEM_USED_ACTIVE'){ // used bait on
 			} else if(msg.id === 'SMT_ITEM_USED_DEACTIVE'){ // used bait off
 			} else if(msg.id === 'SMT_HIDDEN_QUEST_TASK_END'){ // completed vanguard
@@ -1109,12 +1133,84 @@ module.exports = function TerableFishing(mod){
 				if(deal.playerId == event.playerId && deal.listing == event.listing) pendingDeals.splice(i--, 1);
 			}
 			pendingDeals.push(event);
-			command.message("Negoiation suggested, I'll address it after this fish.");
+			command.message("Negotiation suggested, I'll address it after this fish.");
 			return false;
 		}
 	});
 	
     mod.hook('C_CHAT', 1, event => {
     	if(event.channel === 10 && mod.settings.enabled) return false;
-    });
+	});
+	
+	
+    function startBanking(){
+		if(scrollsInCooldown){
+			needToBank = true;
+		} else{
+			needToBank = false;
+			banking = true;
+			mod.toServer('C_NOTIMELINE_SKILL', 3, { skill: skill });
+		}
+    }
+	function bankFilets() {
+		let filets = mod.game.inventory.findInBagOrPockets(FILET_ID);
+		mod.send('C_PUT_WARE_ITEM', 3, {
+			gameId: mod.game.me.gameId,
+			type: 1,
+			page: 0,
+			pocket: filets.pocket,
+			invenPos: filets.slot,
+			id: filets.id,
+			dbid: filets.dbid,
+			amount: filets.amount
+		});
+		
+		mod.setTimeout(() => {
+			mod.send('C_CANCEL_CONTRACT', 1, {
+				type: 26,
+				id: request.banker.id
+			});
+			banking = false;
+			clearTimeout(timeout);
+			timeout = setTimeout(startFishing, 2000);
+		}, 5000);
+	}
+	mod.hook('S_START_COOLTIME_SKILL', 3, event => {
+		if(event.skill == skill && event.cooldown > 0){
+			scrollsInCooldown = true;
+			setTimeout(() => {
+				scrollsInCooldown = false;
+				if(needToBank) startBanking();
+			}, event.cooldown);
+		}
+	});
+	mod.hook('S_SPAWN_NPC', 11, event => {
+		if(banking && event.relation == 12 && event.templateId == TEMPLATE_BANKER && mod.game.me.is(event.owner)){
+			request.banker = event;
+			mod.setTimeout(() => {
+				mod.send('C_NPC_CONTACT', 2, {
+					gameId: request.banker.gameId
+				});
+			}, 3427);
+		}
+	});
+	mod.hook('S_DIALOG', 2, event => {
+		if(banking && request.banker && event.gameId == request.banker.gameId){
+			request.banker.dialogId = event.id;
+			mod.setTimeout(() => {
+				mod.send('C_DIALOG', 1, {
+					id: request.banker.dialogId,
+					index: 1,
+					questReward: -1,
+					unk: -1
+				});
+			}, 2381);
+		}
+	});
+	mod.hook('S_REQUEST_CONTRACT', 1, event => {
+		if(banking && event.type == 26){
+			request.banker.id = event.id;
+			bankFilets();
+		}
+	});
 }

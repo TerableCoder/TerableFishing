@@ -1,5 +1,6 @@
 const DefaultSettings = {
 	"enabled": true,
+	"bankFilet": true,
 	"worm": true,
 	"X": 10,
 	"BAF": true,
