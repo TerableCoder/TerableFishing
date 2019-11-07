@@ -596,7 +596,7 @@ module.exports = function TerableFishing(mod){
 									id: event.id
 								});
 								clearTimeout(timeout);
-								timeout = setTimeout(checkBaitCount, 2000);
+								timeout = setTimeout(checkBaitCount, 1000);
 							}
 						}, 3000);
 					}, delay+50);
