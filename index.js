@@ -890,7 +890,7 @@ module.exports = function TerableFishing(mod){
 			clearTimeout(timeout);
 			setTimeout(() => { // ADDED
 				checkBaitCount();
-			}, 5000);
+			}, 1000);
 		} else if(event.id === 70261 && mod.settings.reUseFishSalad){ 
 			useSalad = true;
 		}
