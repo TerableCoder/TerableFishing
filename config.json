@@ -2,7 +2,7 @@
     "version": 4,
     "data": {
         "enabled": true,
-        "bankFilet": false,
+        "bankFilet": true,
         "worm": false,
         "X": 5,
         "BAF": true,

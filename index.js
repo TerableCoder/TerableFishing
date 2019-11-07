@@ -1,10 +1,11 @@
 let Readable;
-// TerableCoder 5/23
+// TerableCoder 11/7
 try {
     ({Readable} = require('tera-data-parser/lib/protocol/stream')); 
 } catch (e){
     ({Readable} = require('tera-data-parser/protocol/stream'));
 }
+// TODO make logging write to a file
 
 const CRAFTABLE_BAITS = [
 	{name: "Bait II", itemId: 206001, abnormalityId: 70272, recipeId: 204100},
@@ -313,13 +314,12 @@ module.exports = function TerableFishing(mod){
     }
 	
     function startFishing(){
-		//if(dismantling || selling) return; // TODO make this a setTimeout so that I can detect my dismantle bugging ~ just block rod throws during it ~ time to test
 		if(dismantling || selling){
 			timeout = setTimeout(() => {
 				dismantling = false;
 				selling = false;
 				startFishing();
-			}, 30000);
+			}, 20000);
 			return; // TODO make this a setTimeout so that I can detect my dismantle bugging ~ just block rod throws during it ~ time to test
 		}
 		if(!throwTime) throwTime = new Date().getTime(); // protect from rod spam
@@ -336,16 +336,7 @@ module.exports = function TerableFishing(mod){
 			numThrows = 0;
 		}
 		
-		/*if(pendingDeals.length){
-			command.message("Dealing with negotiations.");
-			negoWaiting = true;
-			for(let i = 0; i < pendingDeals.length; i++){
-				mod.toClient('S_TRADE_BROKER_DEAL_SUGGESTED', 1, pendingDeals[i]);
-				pendingDeals.splice(i--, 1);
-			}
-			clearTimeout(timeout);
-			timeout = setTimeout(startFishing, 18000);
-		} else */if(mod.game.me.inCombat){
+		if(mod.game.me.inCombat){
 			command.message('Cannot fish while in combat. Stopping...');
 			calculateFishCaught();
 		} else if(stopFishing){
@@ -372,21 +363,17 @@ module.exports = function TerableFishing(mod){
     }
 
     function startDismantling(){
-		//if(waitingInventory) return;
     	itemsToProcess = [];
     	waitingInventory = true;
     	dismantling = true;
-		//mod.toServer('C_SHOW_INVEN', 1, {unk: 1});
     	mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
     }
 
     function startSelling(){
-		//if(waitingInventory) return;
     	if(lastContact.gameId && lastDialog.id){
 	        itemsToProcess = [];
 	    	waitingInventory = true;
 	    	selling = true;
-			//mod.toServer('C_SHOW_INVEN', 1, {unk: 1});
 			mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
     	} else{
     		if(mod.settings.autoDismantling){
@@ -401,9 +388,8 @@ module.exports = function TerableFishing(mod){
     }
 
     function startDiscarding(){
-    	discarding = true;
-		//mod.toServer('C_SHOW_INVEN', 1, {unk: 1});
-    	mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
+		discarding = true;
+		mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
     }
 	
 	function checkBaitCount(){ // ADDED
@@ -415,7 +401,6 @@ module.exports = function TerableFishing(mod){
 			itemsToProcess = [];
 			waitingInventory = true;
 			checkingBait = true;
-			//mod.toServer('C_SHOW_INVEN', 1, {unk: 1});
 			mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
 		}
     }
@@ -446,7 +431,6 @@ module.exports = function TerableFishing(mod){
     			if(dialogHook){
     				mod.unhook(dialogHook);
     				selling = false;
-    				//command.message("Failed to contact npc.");
 		    		if(mod.settings.autoDismantling){
 		    			command.message('Failed to contact npc. Dismantling...');
 		    			startDismantling();
@@ -499,10 +483,6 @@ module.exports = function TerableFishing(mod){
     	Object.assign(lastDialog, event);
     });
 
-    /*mod.hook('C_CAST_FISHING_ROD', 'raw', (code, data) => {
-    	data[20] = validate(mod.settings.castDistance, 0, 18, 3);
-    	return true;
-    });*/
     mod.hook('C_CAST_FISHING_ROD', 1, event => {
     	event.dist = validate(mod.settings.castDistance, 0, 18, 3);
     	return true;
@@ -657,7 +637,7 @@ module.exports = function TerableFishing(mod){
 		}
 	});
 
-    mod.hook('S_ITEMLIST', 1, event => {
+    mod.hook('S_ITEMLIST', 2, event => {
 		for (const item of event.items){
 			if(RODS.includes(item.id)){
 				if(fishingRod == null || fishingRod == 206700) fishingRod = item.id;
@@ -719,7 +699,6 @@ module.exports = function TerableFishing(mod){
 						mod.toServer('C_DEL_ITEM', 3, {
 							gameId: mod.game.me.gameId,
 							pocket: 0,
-							//slot: (item.slot - 40),
 							slot: (item.slot),
 							amount: item.amount
 						});
@@ -750,7 +729,6 @@ module.exports = function TerableFishing(mod){
     				mod.toServer('C_DEL_ITEM', 3, {
 						gameId: mod.game.me.gameId,
 						pocket: 0,
-						//slot: item.slot - 40,
 						slot: item.slot,
 						amount: Math.min(item.amount, mod.settings.discardCount)
 					});
@@ -783,8 +761,8 @@ module.exports = function TerableFishing(mod){
         const stream = new Readable(data);
         stream.position = 4;
         if(mod.game.me.is(stream.uint64())){
-       		stream.position = 25;
-       		fishingRod = stream.uint32();
+			stream.position = 25;
+			fishingRod = stream.uint32();
         }
     });
 	
@@ -883,7 +861,7 @@ module.exports = function TerableFishing(mod){
 		}
 	});
 
-	mod.hook('C_PLAYER_LOCATION', 5, event => { // the restriction on this caused playerLocation to sometimes never update, thus bait usage would fail
+	mod.hook('C_PLAYER_LOCATION', 5, event => {
 		Object.assign(playerLocation, event.loc);
 		playerAngle = event.w;
 	});
@@ -931,10 +909,8 @@ module.exports = function TerableFishing(mod){
     	if(msg){
     		if(msg.id === 'SMT_CANNOT_FISHING_FULL_INVEN'){ // full inven
     			if(mod.settings.autoSelling && !selling && !dismantling){
-    			//if(mod.settings.autoSelling && !selling){
     				startSelling();
     			} else if(mod.settings.autoDismantling && !dismantling && !selling){
-    			//} else if(mod.settings.autoDismantling && !dismantling){
     				startDismantling();
     			}
     		} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052'){ // too many fish filets
@@ -1006,123 +982,14 @@ module.exports = function TerableFishing(mod){
 				clearTimeout(timeout); // TODO SEE IF I CAN REMOVE THIS
 				timeout = setTimeout(startFishing, 3000);
 			} else if(negoWaiting && !pendingDeals.length && msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // finished all negotiations
-				//command.message("Negotiations finished. Resuming."); // too much spam
 				negoWaiting = false;
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 1000);
 			} else if(msg.id === 'SMT_CANNOT_USE_ITEM_WHILE_CONTRACT'){ // still negotiating
-				//command.message("Negotiations still inprogress. I'll try again later."); // too much spam
 				negoWaiting = true;
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 9000);
-			} /*else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA'){ // non-fishing area bug while negoWaiting
-			} else if(msg.id === 'SMT_PROHIBITED_ACTION_ON_RIDE'){ // mounted while negoWaiting
-			} else if(msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // sold item with more deals to finish
-			
-			} else if(msg.id === 'SMT_CANNOT_HAVE_MORE_ITEMS'){ // can't have more fish filets
-			} else if(msg.id === 'SMT_GENERAL_CANT_REG_ITEM_LIMIT'){ // can't have more fish filets
-			} else if(msg.id === 'SMT_ITEM_DELETED'){ // deleted fish filets
-			
-			} else if(msg.id === 'SMT_MEDIATE_TRADE_CANCEL_ME'){ // negotiation canceled 
-			} else if(msg.id === 'SMT_ITEM_USED'){ // used banker summon
-			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_INSERT'){ // insert to bank
-			} else if(msg.id === 'SMT_WAREHOUSE_ITEM_DRAW'){ // withdraw from bank
-			} else if(msg.id === 'SMT_GACHA_REWARD'){ // someone got a reward from a box
-			} else if(msg.id === 'SMT_MAX_ENCHANT_SUCCEED'){ // enchant success message
-			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGON_NO_MESSAGE'){ // guild member login, empty login message
-			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGON'){ // guild member logon with login message
-			} else if(msg.id === 'SMT_GUILD_MEMBER_LOGOUT'){ // guild member logout
-			} else if(msg.id === 'SMT_GQUEST_NORMAL_ACCEPT'){ // guild quest accept
-			} else if(msg.id === 'SMT_GQUEST_NORMAL_COMPLETE'){ // guild quest success
-			} else if(msg.id === 'SMT_GQUEST_NORMAL_FAIL_OVERTIME'){ // guild quest failed
-			} else if(msg.id === 'SMT_BATTLEFIELD_JOIN_START'){ // 3s or gridiron now open
-			} else if(msg.id === 'SMT_BATTLEFIELD_JOIN_END'){ // 3s or gridiron now closed
-			} else if(msg.id === 'SMT_GQUEST_NORMAL_CARRYOUT'){ // advanced toward completion of the guild quest
-			} else if(msg.id === 'SMT_GUILD_WAR_DECLARE'){ // gvg declared
-			} else if(msg.id === 'SMT_GUILD_WAR_WITHDRAW'){ // gvg withdrew
-			} else if(msg.id === 'SMT_GUILD_WAR_SURRENDER'){ // gvg surrender
-			} else if(msg.id === 'SMT_GUILDWAR_CANT_SURRENDER_NO_AUTHORITY'){ // gvg can't surrender?
-			} else if(msg.id === 'SMT_GUILDWAR_ONGOING'){ // guild war happening
-			} else if(msg.id === 'SMT_GC_MSGBOX_APPLYRESULT_1'){ // guild member accepted person into the guild
-			} else if(msg.id === 'SMT_GC_MSGBOX_APPLYLIST_1'){ // join guild
-			} else if(msg.id === 'SMT_GUILD_LOG_LEAVE'){ // leave guild
-			} else if(msg.id === 'SMT_USE_ITEM_NO_EXIST'){ // item doesn't exist, aka lag when trading
-			} else if(msg.id === 'SMT_NO_ITEM'){ // no bait
-			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE'){ // can't craft more bait, or can't have more fish filets
-			} else if(msg.id === 'SMT_ITEM_USED_ACTIVE'){ // used bait on
-			} else if(msg.id === 'SMT_ITEM_USED_DEACTIVE'){ // used bait off
-			} else if(msg.id === 'SMT_HIDDEN_QUEST_TASK_END'){ // completed vanguard
-			} else if(msg.id === 'SMT_MEDIATE_REG_SUCCESS_ITEM'){ // listed item onto broker
-			} else if(msg.id === 'SMT_MEDIATE_CONTRACT_BARGAIN'){ // nego for someone elses listed broker item
-			} else if(msg.id === 'SMT_CANNOT_CONTINUE_CONTRACT'){ // can't nego for someone elses listed broker item
-			} else if(msg.id === 'SMT_MEDIATE_SUCCESS_BUY'){ // bought item from broker
-			} else if(msg.id === 'SMT_MEDIATE_TRADE_FINISH_USE_MONEY'){ // pay for the brokered item
-			} else if(msg.id === 'SMT_MEDIATE_FAIL_CALCULATE'){ // too poor to buy from broker
-			} else if(msg.id === 'SMT_MEDIATE_CALCULATE'){ // broker thing before claim
-			} else if(msg.id === 'SMT_MEDIATE_CALCULATE_GET_ITEM'){ // get item from broker
-			} else if(msg.id === 'SMT_MEDIATE_CALCULATE_GET_MONEY'){ // get money from item sold on broker
-			} else if(msg.id === 'SMT_MEDIATE_DISCONNECT_CANCEL_OFFER_BY_ME'){ // cancel broker nego
-			} else if(msg.id === 'SMT_LOOTED_MONEY'){ // vendored fish
-			} else if(msg.id === 'SMT_ITEM_DECOMPOSE_COMPLETE'){ // dismantled fish
-			} else if(msg.id === 'SMT_FIELD_EVENT_WORLD_ANNOUNCE'){ // superior guardian mission
-			} else if(msg.id === 'SMT_PLAYTIME_TIMER'){ // you've been playing for x hours
-			} else if(msg.id === 'SMT_KOREAN_RATING_TEENAGER_PROHIBITED'){ // logs off koreans?
-			} else if(msg.id === 'SMT_VIPSYSTEM_GET_TOKEN'){ // log in tera rewards
-			} else if(msg.id === 'SMT_USING_ACCOUNT_BENEFIT'){ // log in buff?
-			} else if(msg.id === 'SMT_START_NPC_ARENA'){ // bamarama
-			} else if(msg.id === 'SMT_FRIEND_REQUEST'){ // sent friend request
-			} else if(msg.id === 'SMT_FRIEND_SOMEONE_ADDED_ME'){ // someone accepted friend request
-			} else if(msg.id === 'SMT_FISHING_REWARD'){ // someone caught a BAF
-			} else if(msg.id === 'SMT_FISHING_RESULT_SUCCESS'){ // caught a fish
-			} else if(msg.id === 'SMT_ITEM_USED_NOT_CONSUME'){ // use brooch
-			} else if(msg.id === 'SMT_CANNOT_GET_ITEM_FROM_WARE'){ // IDK bank stuff?
-			} else if(msg.id === 'SMT_WAREHOUSE_GOLD_DRAW'){ // withdraw gold from bank
-			} else if(msg.id === 'SMT_WAREHOUSE_GOLD_INSERT'){ // insert gold to bank
-			} else if(msg.id === 'SMT_WAREHOUSE_FULL'){ // bank full
-			} else if(msg.id === 'SMT_INVEN_FULL'){ // inventory full
-			} else if(msg.id === 'SMT_DROPDMG_DAMAGE'){ // fall damage
-			} else if(msg.id === 'SMT_OPPONENT_IS_BUSY'){ // can't duel, target busy
-			} else if(msg.id === 'SMT_BATTLE_START'){ // start duel
-			} else if(msg.id === 'SMT_BATTLE_END'){ // duel over
-			} else if(msg.id === 'SMT_BATTLE_RESURRECT'){ // res, after duel?
-			} else if(msg.id === 'SMT_GENERAL_NOT_IN_THE_WORLD'){ // /w offline player
-			} else if(msg.id === 'SMT_CHAT_LINKTEXT_DISCONNECT'){ // fail to link item in chat?
-			} else if(msg.id === 'SMT_CITYWAR_REWARD_RANKEXP'){ // CU guild exp
-			} else if(msg.id === 'SMT_GUILD_INCENTIVE_SUCCESS'){ // CU victory
-			} else if(msg.id === 'SMT_ACCOMPLISH_ACHIEVEMENT_GRADE_ALL'){ // achievement laurel achieved
-			} else if(msg.id === 'SMT_ARTISAN_CANT_PRODUCE_FULL_INVEN'){ // can't craft, inventory full
-			} else if(msg.id === 'SMT_BF_SEND_REWARD_TO_PARCEL'){ // full inventory, reward sent to mail
-			} else if(msg.id === 'SMT_DISMISS_PARTY_SUCCEED'){ // drop/disband party
-			} else if(msg.id === 'SMT_ACHIEVEMENT_CLEAR_MESSAGE_OPPONENT'){ // achievement something
-			} else if(msg.id === 'SMT_MEDIATE_CANT_CONTRACT_ALREADY_CONTRACT_OPPONENT'){ // reject trade
-			} else if(msg.id === 'SMT_FRIEND_RECEIVE_HELLO'){ // got greeted
-			} else if(msg.id === 'SMT_FRIEND_SOMEONE_REQUEST_ME'){ // friend request
-			} else if(msg.id === 'SMT_FRIEND_ADD_SUCCESS'){ // added friend
-			} else if(msg.id === 'SMT_ACCOMPLISH_ACHIEVEMENT_GRADE_GUILD'){ // +8
-			} else if(msg.id === 'SMT_TRADE_BROKER_CANT_SEARCH_ALL'){ // empty broker search
-			} else if(msg.id === 'SMT_INVEN_NOT_ENOUGH_MONEY'){ // too poor to buy item
-			} else if(msg.id === 'SMT_PARTY_LOOT_ITEM_PARTYPLAYER'){ // party member got fish
-			} else if(msg.id === 'SMT_PARTYBOARD_RECORDED_YOUR_LIST'){ // idk
-				console.log(timeStamp() + "Something fishy is going on here...");
-				console.log(msg);
-			} else if(msg.id === 'SMT_CUSTOMIZING_NOT_ENOUGH_CUSTOMIZING_SLOT'){ // idk
-				console.log(timeStamp() + "Something fishy is going on here...");
-				console.log(msg);
-			} else if(msg.id === 'SMT_GET_ENCHANT_SUCCEED'){ // something with enchanting
-			} else if(msg.id === 'SMT_UPDATE_QUEST_TASK'){ // close VG from quest window
-			} else if(msg.id === 'SMT_FIELDBOSS_DIE_GUILD'){ // world bam dies
-			} else if(msg.id === 'SMT_FIELDBOSS_APPEAR'){ // world bam appears
-			} else if(msg.id === 'SMT_TRADE_CANCEL'){ // IDK broker stuff?
-				console.log(timeStamp() + "Something fishy is going on here...");
-				console.log(msg);
-			} else{
-				console.log(timeStamp() + "Something fishy is going on here...");
-				console.log(msg);
-			}*/
-			// TODO make TerableFishing cancel command, jk hard af~
-			// make nego ing someone or getting summoned not make your rod spazm, not prevented, but it stops
-			// fix nego
-			// make logging write to a file
+			}
     	}
     });
 	
@@ -1142,7 +1009,7 @@ module.exports = function TerableFishing(mod){
     	if(event.channel === 10 && mod.settings.enabled) return false;
 	});
 	
-	
+	// Banking fillets
     function startBanking(){
 		if(scrollsInCooldown){
 			needToBank = true;
