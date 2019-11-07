@@ -8,19 +8,38 @@ try {
 // TODO make logging write to a file
 
 const CRAFTABLE_BAITS = [
-	{name: "Bait II", itemId: 206001, abnormalityId: 70272, recipeId: 204100},
-	{name: "Bait III", itemId: 206002, abnormalityId: 70273, recipeId: 204101},
-	{name: "Bait IV", itemId: 206003, abnormalityId: 70274, recipeId: 204102},
-	{name: "Bait V", itemId: 206004, abnormalityId: 70275, recipeId: 204103}
+	{name: "Bait II", itemId: 206001, abnormalityId: 70272, recipeId: 204100, wormId: 206006, wormAbnormalityId: 70282},
+	{name: "Bait III", itemId: 206002, abnormalityId: 70273, recipeId: 204101, wormId: 206007, wormAbnormalityId: 70283},
+	{name: "Bait IV", itemId: 206003, abnormalityId: 70274, recipeId: 204102, wormId: 206008, wormAbnormalityId: 70284},
+	{name: "Bait V", itemId: 206004, abnormalityId: 70275, recipeId: 204103, wormId: 206009, wormAbnormalityId: 70285}
 ];
+const BAITS = {
+	70272: 206001, // Bait II 20%
+	70273: 206002, // Bait III 40%
+	70274: 206003, // Bait IV 60%
+	70275: 206004, // Bait V 80%
+	70282: 206006, // Green Angleworm 20%
+	70283: 206007, // Blue Angleworm 40%
+	70284: 206008, // Purple Angleworm 60%
+	70285: 206009 // Golden Angleworm 80%
+};
+const BAIT_RECIPES = {
+	70272: 204100, // Bait II 20%
+	70273: 204101, // Bait III 40%
+	70274: 204102, // Bait IV 60%
+	70275: 204103, // Bait V 80%
+	70282: 204100, // Green Angleworm 20%
+	70283: 204101, // Blue Angleworm 40%
+	70284: 204102, // Purple Angleworm 60%
+	70285: 204103 // Golden Angleworm 80%
+};
 
 const RODS = [206700, 206701, 206702, 206703, 206704, 206705, 206706, 206707, 206708, 206709, 206710, 206711, 206712, 206713, 206714, 206715, 206716, 206717, 206718, 206719, 206720, 206721, 206722, 206723, 206724, 206725, 206726, 206727, 206728];
-
 const WormId = [206005, 206006, 206007, 206008, 206009];
-
+const saladId = 206020;
+const saladAbnormalityId = 70261;
 const AnglerToken = 204051;
 const SkillTome = [209901, 209902, 209903, 209904];
-
 const TEMPLATE_BANKER = 1962;
 const FILET_ID = 204052;
 
@@ -306,10 +325,15 @@ module.exports = function TerableFishing(mod){
 	function startCraftingBait(){ // ADDED
 		if(!crafting) successCount = 0;
 		crafting = true;
-		mod.toServer('C_START_PRODUCE', 1, {
-			recipe: lastBait.recipeId,
-			unk: 0
-		});
+		if(BAIT_RECIPES[lastBait] === undefined){
+			command.message(`Bait ${lastBait} is invalid. Stopping...`);
+			calculateFishCaught();
+		} else{
+			mod.toServer('C_START_PRODUCE', 1, {
+				recipe: BAIT_RECIPES[lastBait],
+				unk: 0
+			});
+		}
     }
 	
     function startFishing(){
@@ -347,8 +371,8 @@ module.exports = function TerableFishing(mod){
 			mod.toServer('C_USE_ITEM', 3, { // use rod
 				gameId: mod.game.me.gameId,
 				id: fishingRod,
-				dbid: 0,
-				target: 0,
+				dbid: 0n,
+				target: 0n,
 				amount: 1,
 				dest: 0,
 				loc: playerLocation,
@@ -398,9 +422,36 @@ module.exports = function TerableFishing(mod){
 			calculateFishCaught();
 		} else{
 			itemsToProcess = [];
-			waitingInventory = true;
-			checkingBait = true;
 			mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
+			mod.setTimeout(() => {
+				const baitInInventory = mod.game.inventory.findInBagOrPockets(Object.values(BAITS));
+				if(!baitInInventory){ // if no bait, go make it
+					startCraftingBait();
+					return;
+				}
+				mod.toServer('C_USE_ITEM', 3, { // use bait
+					gameId: mod.game.me.gameId,
+					id: baitInInventory.id,
+					dbid: baitInInventory.dbid,
+					target: 0n,
+					amount: 1,
+					dest: 0,
+					loc: playerLocation,
+					w: playerAngle,
+					unk1: 0,
+					unk2: 0,
+					unk3: 0,
+					unk4: true
+				});
+				clearTimeout(timeout);
+				timeout = mod.setTimeout(() => {
+					if(currentBait){
+						startFishing();
+					} else{
+						command.message("Failed to auto fish. Stopping...");
+					}
+				}, 1000);
+			}, 500);
 		}
     }
 	
@@ -491,25 +542,14 @@ module.exports = function TerableFishing(mod){
 		if(crafting){
 			if(event.success){
 				successCount++;
-				startCraftingBait();
-			} else{
-				crafting = false;
-				
-				if(successCount == 0){
-					if(!mod.settings.discardFilets){
-						mod.settings.autoSelling = false;
-						mod.settings.autoDismantling = true;
-						command.message(`You've run out of Fish Filets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
-						startDismantling();
-					} else{
-						command.message("Failed to auto craft. Stopping...");
-						calculateFishCaught();
-					}
-				} else{
+				mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
+				mod.setTimeout(() => {
+					const baitInInventory = mod.game.inventory.findInBagOrPockets(Object.values(BAITS));
+					command.message(baitInInventory);
 					mod.toServer('C_USE_ITEM', 3, { // use bait
 						gameId: mod.game.me.gameId,
-						id: lastBait.itemId,
-						dbid: 0n,
+						id: baitInInventory.id,
+						dbid: baitInInventory.dbid,
 						target: 0n,
 						amount: 1,
 						dest: 0,
@@ -529,6 +569,20 @@ module.exports = function TerableFishing(mod){
 							calculateFishCaught();
 						}
 					}, 1000);
+				}, 500);
+			} else{
+				crafting = false;
+				
+				if(successCount == 0){ // can probably remove this if statement now
+					if(!mod.settings.discardFilets){
+						mod.settings.autoSelling = false;
+						mod.settings.autoDismantling = true;
+						command.message(`You've run out of Fish Filets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
+						startDismantling();
+					} else{
+						command.message("Failed to auto craft. Stopping...");
+						calculateFishCaught();
+					}
 				}
 			}
 		}
@@ -596,7 +650,7 @@ module.exports = function TerableFishing(mod){
 									id: event.id
 								});
 								clearTimeout(timeout);
-								timeout = setTimeout(checkBaitCount, 1000);
+								timeout = setTimeout(checkBaitCount, 2000);
 							}
 						}, 3000);
 					}, delay+50);
@@ -655,42 +709,7 @@ module.exports = function TerableFishing(mod){
 				return;
 			}*/
 			
-			if(checkingBait){ // ADDED
-                for (const item of event.items){
-                    if(item.id === lastBait.itemId){
-                        checkingBait = false;
-                        mod.toServer('C_USE_ITEM', 3, {
-                            gameId: mod.game.me.gameId,
-                            id: lastBait.itemId,
-                            dbid: 0,
-                            target: 0,
-                            amount: 1,
-                            dest: 0,
-                            loc: playerLocation,
-                            w: playerAngle,
-                            unk1: 0,
-                            unk2: 0,
-                            unk3: 0,
-                            unk4: true
-                        });
-						clearTimeout(timeout);
-                        timeout = mod.setTimeout(() => {
-                            if(currentBait){
-                                startFishing();
-                            } else{
-                                command.message("Failed to auto fish. Stoping...");
-                            }
-                        }, 1000);
-                        return;
-                    }
-                }
-				
-                if(!event.more){
-					waitingInventory = false;
-                    startCraftingBait();
-                    checkingBait = false;
-                }
-            } else if(selling || dismantling){
+			if(selling || dismantling){
 				for (const item of event.items){
 					if(mod.settings[selling ? "autoSellFishes" : "autoDismantleFishes"].find(id => id == item.id)){
 						itemsToProcess.push({dbid: item.dbid, id: item.id, slot: item.slot});
@@ -834,9 +853,9 @@ module.exports = function TerableFishing(mod){
 			if(useSalad){
 				mod.toServer('C_USE_ITEM', 3, {
 					gameId: mod.game.me.gameId,
-					id: 206020,
-					dbid: 0,
-					target: 0,
+					id: saladId,
+					dbid: 0n,
+					target: 0n,
 					amount: 1,
 					dest: 0,
 					loc: playerLocation,
@@ -872,8 +891,9 @@ module.exports = function TerableFishing(mod){
 
     mod.hook('S_ABNORMALITY_BEGIN', 3, event => {
 		if(mod.game.me.is(event.target)){
-			if(event.id === 70261) useSalad = false;
-			currentBait = CRAFTABLE_BAITS.find(obj => obj.abnormalityId === event.id) || currentBait;
+			if(event.id === saladAbnormalityId) useSalad = false;
+			//currentBait = CRAFTABLE_BAITS.find(obj => obj.abnormalityId === event.id) || currentBait;
+			currentBait = Object.keys(BAITS).includes((event.id).toString()) ? event.id : currentBait;
 			lastBait = currentBait || lastBait;
 		}
 	});
@@ -885,12 +905,12 @@ module.exports = function TerableFishing(mod){
 	mod.hook('S_ABNORMALITY_END', 1, event => {
 		if(!mod.game.me.is(event.target)) return;
 
-		if(currentBait && currentBait.abnormalityId === event.id && amFishing){
+		if(currentBait === event.id && amFishing){
 			currentBait = null;
 			clearTimeout(timeout);
 			setTimeout(() => { // ADDED
 				checkBaitCount();
-			}, 1000);
+			}, 5000);
 		} else if(event.id === 70261 && mod.settings.reUseFishSalad){ 
 			useSalad = true;
 		}
