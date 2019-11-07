@@ -927,9 +927,11 @@ module.exports = function TerableFishing(mod){
 		const msg = mod.parseSystemMessage(event.message);
 		if(msg){
 			if(msg.id === 'SMT_CANNOT_FISHING_FULL_INVEN'){ // full inven
-				if(mod.settings.autoSelling && !selling && !dismantling){
+				//if(mod.settings.autoSelling && !selling && !dismantling){
+				if(mod.settings.autoSelling){
 					startSelling();
-				} else if(mod.settings.autoDismantling && !dismantling && !selling){
+				//} else if(mod.settings.autoDismantling && !dismantling && !selling){
+				} else if(mod.settings.autoDismantling){
 					startDismantling();
 				}
 			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052'){ // too many fish filets
