@@ -366,6 +366,9 @@ module.exports = function TerableFishing(mod){
 			stopFishing = false;
 			command.message('Fishing stopped.');
 			calculateFishCaught();
+		} else if(currentBait === null){
+			command.message('Bait Null.');
+			calculateFishCaught();
 		} else{
 			amFishing = true;
 			mod.toServer('C_USE_ITEM', 3, { // use rod
@@ -449,6 +452,7 @@ module.exports = function TerableFishing(mod){
 						startFishing();
 					} else{
 						command.message("Failed to auto fish. Stopping...");
+						calculateFishCaught();
 					}
 				}, 1000);
 			}, 500);
@@ -542,38 +546,11 @@ module.exports = function TerableFishing(mod){
 		if(crafting){
 			if(event.success){
 				successCount++;
-				mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
-				mod.setTimeout(() => {
-					const baitInInventory = mod.game.inventory.findInBagOrPockets(Object.values(BAITS));
-					command.message(baitInInventory);
-					mod.toServer('C_USE_ITEM', 3, { // use bait
-						gameId: mod.game.me.gameId,
-						id: baitInInventory.id,
-						dbid: baitInInventory.dbid,
-						target: 0n,
-						amount: 1,
-						dest: 0,
-						loc: playerLocation,
-						w: playerAngle,
-						unk1: 0,
-						unk2: 0,
-						unk3: 0,
-						unk4: true
-					});
-					clearTimeout(timeout);
-					timeout = setTimeout(() => {
-						if(currentBait){
-							startFishing();
-						} else{
-							command.message("Failed to auto fish. Stopping...");
-							calculateFishCaught();
-						}
-					}, 1000);
-				}, 500);
+				startCraftingBait();
 			} else{
 				crafting = false;
 				
-				if(successCount == 0){ // can probably remove this if statement now
+				if(successCount == 0){
 					if(!mod.settings.discardFilets){
 						mod.settings.autoSelling = false;
 						mod.settings.autoDismantling = true;
@@ -583,6 +560,34 @@ module.exports = function TerableFishing(mod){
 						command.message("Failed to auto craft. Stopping...");
 						calculateFishCaught();
 					}
+				} else{
+					mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
+					mod.setTimeout(() => {
+						const baitInInventory = mod.game.inventory.findInBagOrPockets(Object.values(BAITS));
+						mod.toServer('C_USE_ITEM', 3, { // use bait
+							gameId: mod.game.me.gameId,
+							id: baitInInventory.id,
+							dbid: baitInInventory.dbid,
+							target: 0n,
+							amount: 1,
+							dest: 0,
+							loc: playerLocation,
+							w: playerAngle,
+							unk1: 0,
+							unk2: 0,
+							unk3: 0,
+							unk4: true
+						});
+						clearTimeout(timeout);
+						timeout = setTimeout(() => {
+							if(currentBait){
+								startFishing();
+							} else{
+								command.message("Failed to auto fish. Stopping...");
+								calculateFishCaught();
+							}
+						}, 1000);
+					}, 500);
 				}
 			}
 		}
@@ -927,11 +932,11 @@ module.exports = function TerableFishing(mod){
 		const msg = mod.parseSystemMessage(event.message);
 		if(msg){
 			if(msg.id === 'SMT_CANNOT_FISHING_FULL_INVEN'){ // full inven
-				//if(mod.settings.autoSelling && !selling && !dismantling){
-				if(mod.settings.autoSelling){
+				if(mod.settings.autoSelling && !selling && !dismantling){
+				//if(mod.settings.autoSelling){
 					startSelling();
-				//} else if(mod.settings.autoDismantling && !dismantling && !selling){
-				} else if(mod.settings.autoDismantling){
+				} else if(mod.settings.autoDismantling && !dismantling && !selling){
+				//} else if(mod.settings.autoDismantling){
 					startDismantling();
 				}
 			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052'){ // too many fish filets
