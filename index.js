@@ -6,6 +6,7 @@ try {
     ({Readable} = require('tera-data-parser/protocol/stream'));
 }*/
 // TODO make logging write to a file
+mod.game.initialize('inventory');
 
 const CRAFTABLE_BAITS = [
 	{name: "Bait II", itemId: 206001, abnormalityId: 70272, recipeId: 204100, wormId: 206006, wormAbnormalityId: 70282},
