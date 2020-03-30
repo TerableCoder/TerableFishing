@@ -6,7 +6,6 @@ try {
     ({Readable} = require('tera-data-parser/protocol/stream'));
 }*/
 // TODO make logging write to a file
-mod.game.initialize('inventory');
 
 const CRAFTABLE_BAITS = [
 	{name: "Bait II", itemId: 206001, abnormalityId: 70272, recipeId: 204100, wormId: 206006, wormAbnormalityId: 70282},
@@ -46,6 +45,7 @@ const FILET_ID = 204052;
 
 module.exports = function TerableFishing(mod){
 	const command = mod.command || mod.require.command;
+	mod.game.initialize('inventory');
 	
 	/*if(mod.proxyAuthor !== 'caali'){
 		const options = require('./module').options
