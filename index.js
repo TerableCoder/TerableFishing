@@ -1,10 +1,10 @@
-let Readable;
-// TerableCoder 11/7
+// TerableCoder 3/30
+/*let Readable;
 try {
     ({Readable} = require('tera-data-parser/lib/protocol/stream')); 
 } catch (e){
     ({Readable} = require('tera-data-parser/protocol/stream'));
-}
+}*/
 // TODO make logging write to a file
 
 const CRAFTABLE_BAITS = [
@@ -100,6 +100,11 @@ module.exports = function TerableFishing(mod){
 			id: 60401306
 		},
 		request = {};
+
+	let counter = 0,
+		myServant = null,
+		useItemType = 206049, // puppy figurine
+		feedServant = false;
 
     function rand([min, max], lowerBound){
 		lowerBound = isNaN(lowerBound) ? Number.NEGATIVE_INFINITY : lowerBound;
@@ -203,7 +208,7 @@ module.exports = function TerableFishing(mod){
 		},
 		start(){
 			if(mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)){
-				mod.toClient('S_CHAT', 3, { channel: 21, name: '', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
+				mod.toClient('S_CHAT', 3, { channel: 21, name: 'TF', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
 			}
 			statFishedTiers = {};
 			skillTomeTiers = {};
@@ -504,7 +509,8 @@ module.exports = function TerableFishing(mod){
 		}
     }
 	
-	mod.hook('S_LOGIN', 14, event => {
+	mod.game.on('enter_game', () => { 
+		feedServant = false;
 		pendingDeals = [];
 		negoWaiting = false;
 		clearTimeout(timeout);
@@ -537,58 +543,61 @@ module.exports = function TerableFishing(mod){
 		Object.assign(lastDialog, event);
 	});
 
-	mod.hook('C_CAST_FISHING_ROD', 1, event => {
-		event.dist = validate(mod.settings.castDistance, 0, 18, 3);
+	mod.hook('C_CAST_FISHING_ROD', 2, event => {
+		//event.dist = validate(mod.settings.castDistance, 0, 18, 3);
+		event.castDistance = validate(mod.settings.castDistance, 0, 18, 3);
 		return true;
 	});
 
 	mod.hook('S_END_PRODUCE', 1, event => {
-		if(crafting){
-			if(event.success){
-				successCount++;
-				startCraftingBait();
-			} else{
-				crafting = false;
-				
-				if(successCount == 0){
-					if(!mod.settings.discardFilets){
-						mod.settings.autoSelling = false;
-						mod.settings.autoDismantling = true;
-						command.message(`You've run out of Fish Filets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
-						startDismantling();
-					} else{
-						command.message("Failed to auto craft. Stopping...");
-						calculateFishCaught();
-					}
+		if(!crafting) return;
+		if(event.success){
+			successCount++;
+			startCraftingBait();
+		} else{
+			crafting = false;
+			
+			if(successCount == 0){
+				if(mod.game.inventory.getTotalAmount(204052) < 30 && mod.settings.autoDismantling) { // NEW
+					crafting = false;
+					mod.setTimeout(startDismantling, 2000);
+				} else if(!mod.settings.discardFilets){
+					mod.settings.autoSelling = false;
+					mod.settings.autoDismantling = true;
+					command.message(`You've run out of Fish Filets. Auto selling fish is now disabled. Auto dismantling fish is now enabled.`);
+					startDismantling();
 				} else{
-					mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
-					mod.setTimeout(() => {
-						const baitInInventory = mod.game.inventory.findInBagOrPockets(Object.values(BAITS));
-						mod.toServer('C_USE_ITEM', 3, { // use bait
-							gameId: mod.game.me.gameId,
-							id: baitInInventory.id,
-							dbid: baitInInventory.dbid,
-							target: 0n,
-							amount: 1,
-							dest: 0,
-							loc: playerLocation,
-							w: playerAngle,
-							unk1: 0,
-							unk2: 0,
-							unk3: 0,
-							unk4: true
-						});
-						clearTimeout(timeout);
-						timeout = setTimeout(() => {
-							if(currentBait){
-								startFishing();
-							} else{
-								command.message("Failed to auto fish. Stopping...");
-								calculateFishCaught();
-							}
-						}, 1000);
-					}, 500);
+					command.message("Failed to auto craft. Stopping...");
+					calculateFishCaught();
 				}
+			} else{
+				mod.toServer('C_SHOW_ITEMLIST', 1, {gameId: mod.game.me.gameId, container: 0, pocket: 0, requested: true });
+				mod.setTimeout(() => {
+					const baitInInventory = mod.game.inventory.findInBagOrPockets(Object.values(BAITS));
+					mod.toServer('C_USE_ITEM', 3, { // use bait
+						gameId: mod.game.me.gameId,
+						id: baitInInventory.id,
+						dbid: baitInInventory.dbid,
+						target: 0n,
+						amount: 1,
+						dest: 0,
+						loc: playerLocation,
+						w: playerAngle,
+						unk1: 0,
+						unk2: 0,
+						unk3: 0,
+						unk4: true
+					});
+					clearTimeout(timeout);
+					timeout = setTimeout(() => {
+						if(currentBait){
+							startFishing();
+						} else{
+							command.message("Failed to auto fish. Stopping...");
+							calculateFishCaught();
+						}
+					}, 1000);
+				}, 500);
 			}
 		}
 	});
@@ -769,7 +778,16 @@ module.exports = function TerableFishing(mod){
 		}
     });
 
-    mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
+	mod.hook('S_FISHING_BITE', 1, event => {
+		if (!mod.settings.enabled || !mod.game.me.is(event.gameId)) return;
+		
+		mod.setTimeout(() => {
+			mod.send('C_START_FISHING_MINIGAME', 2, {
+				counter: ++counter,
+				unk: 268
+			});
+		}, 537);
+    /*mod.hook('S_FISHING_BITE', 'raw', (code, data) => {
         if(!mod.settings.enabled) return;
 
 		retryNumber = 0;
@@ -777,16 +795,20 @@ module.exports = function TerableFishing(mod){
         stream.position = 8;
         if(mod.game.me.is(stream.uint64())){
             mod.toServer('C_START_FISHING_MINIGAME', 1, {});
-        }
+        }*/
     });
 
-	mod.hook('S_CAST_FISHING_ROD', 'raw', (code, data) => {
+	mod.hook('S_CAST_FISHING_ROD', 1, event => {
+		if (!mod.settings.enabled || !mod.game.me.is(event.gameId)) return;
+		
+		fishingRod = event.fishingRod;
+	/*mod.hook('S_CAST_FISHING_ROD', 'raw', (code, data) => {
         const stream = new Readable(data);
         stream.position = 4;
         if(mod.game.me.is(stream.uint64())){
 			stream.position = 25;
 			fishingRod = stream.uint32();
-        }
+        }*/
     });
 	
 	mod.hook('S_SYSTEM_MESSAGE_LOOT_ITEM', 1, event => {
@@ -813,7 +835,19 @@ module.exports = function TerableFishing(mod){
 		}
 	});
 	
-    mod.hook('S_START_FISHING_MINIGAME', 'raw', (code, data) => {
+	mod.hook('S_START_FISHING_MINIGAME', 1, event => {
+		if (!mod.settings.enabled || !mod.game.me.is(event.gameId)) return;
+
+		mod.setTimeout(() => {
+			mod.clearAllTimeouts();
+			mod.send('C_END_FISHING_MINIGAME', 2, {
+				counter: counter,
+				unk: 138,
+				success: true
+			});
+		}, mod.settings.useRandomDelay ? rand(mod.settings.catchDelay, 2000) : 2000);
+		return false;
+    /*mod.hook('S_START_FISHING_MINIGAME', 'raw', (code, data) => {
         if(!mod.settings.enabled) return;
 		
         const stream = new Readable(data);
@@ -826,7 +860,7 @@ module.exports = function TerableFishing(mod){
                 });
             }, mod.settings.useRandomDelay ? rand(mod.settings.catchDelay, 2000) : 2000);
             return false;
-        }
+        }*/
     });
 	
     mod.hook('C_USE_ITEM', 3, event => {
@@ -855,6 +889,29 @@ module.exports = function TerableFishing(mod){
 				return false;
 			}
 			
+			if(feedServant){
+				feedServant = false;
+				const useItem = mod.game.inventory.find(useItemType);
+				if(useItem){
+					mod.send('C_USE_ITEM', 3, {
+						gameId: mod.game.me.gameId,
+						id: useItem.id,
+						dbid: useItem.dbid,
+						target: 0n,
+						amount: 1,
+						dest: {x: 0, y: 0, z: 0},
+						loc: playerLocation,
+						w: playerAngle,
+						unk1: 0,
+						unk2: 0,
+						unk3: 0,
+						unk4: true
+					});
+					clearTimeout(timeout);
+					timeout = setTimeout(startFishing, 1000);
+					return false;
+				}
+			}
 			if(useSalad){
 				mod.toServer('C_USE_ITEM', 3, {
 					gameId: mod.game.me.gameId,
@@ -879,7 +936,7 @@ module.exports = function TerableFishing(mod){
 			amFishing = true;
 
 			if(mod.settings.autoSelling && (!lastContact.gameId || !lastDialog.id)){
-				mod.toClient('S_CHAT', 3, { channel: 21, name: '', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
+				mod.toClient('S_CHAT', 3, { channel: 21, name: 'TF', message: "You have auto selling turned on, but you didn't talk to any NPC. It will NOT auto sell!!!!"});
 			}
 		}
 	});
@@ -931,6 +988,19 @@ module.exports = function TerableFishing(mod){
 		
 		const msg = mod.parseSystemMessage(event.message);
 		if(msg){
+			/*case 'SMT_ITEM_USED_ACTIVE':
+				if (currentBait && !fishingRod) {
+					MSG.chat(MSG.TIP("已激活 ") + mod.game.inventory.find(currentBait.itemId).data.name + MSG.BLU(" 模组开启"));
+					mod.settings.enabled = true;
+				}
+				break;
+			case 'SMT_ITEM_USED_DEACTIVE':
+				if (lastUsedBait) {
+					MSG.chat(MSG.RED("已冻结 ") + mod.game.inventory.find(lastUsedBait.itemId).data.name + MSG.YEL(" 模组关闭"));
+					mod.settings.enabled = false;
+					restStatus();
+				}
+				break;*/
 			if(msg.id === 'SMT_CANNOT_FISHING_FULL_INVEN'){ // full inven
 				if(mod.settings.autoSelling && !selling && !dismantling){
 				//if(mod.settings.autoSelling){
@@ -941,7 +1011,8 @@ module.exports = function TerableFishing(mod){
 				}
 			} else if(msg.id === 'SMT_ITEM_CANT_POSSESS_MORE' && msg.tokens && msg.tokens['ItemName'] === '@item:204052'){ // too many fish filets
 				cannotDismantle = true;
-    		} else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA' && !negoWaiting){ // non-fishing area bug
+			} // CAN REMOVE START?
+			else if(msg.id === 'SMT_CANNOT_FISHING_NON_AREA' && !negoWaiting){ // non-fishing area bug
 				command.message("Non-fishing area bug? Retrying.");
 				clearTimeout(timeout);
 				retryNumber++;
@@ -1007,7 +1078,8 @@ module.exports = function TerableFishing(mod){
 				command.message("You're busy. Retrying.");
 				clearTimeout(timeout); // TODO SEE IF I CAN REMOVE THIS
 				timeout = setTimeout(startFishing, 3000);
-			} else if(negoWaiting && !pendingDeals.length && msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // finished all negotiations
+			} // CAN REMOVE END?
+			else if(negoWaiting && !pendingDeals.length && msg.id === 'SMT_MEDIATE_SUCCESS_SELL'){ // finished all negotiations
 				negoWaiting = false;
 				clearTimeout(timeout);
 				timeout = setTimeout(startFishing, 1000);
@@ -1106,4 +1178,120 @@ module.exports = function TerableFishing(mod){
 			bankFilets();
 		}
 	});
+
+	
+	mod.hook('S_REQUEST_SPAWN_SERVANT', 4, event => {
+		if (!mod.game.me.is(event.ownerId) || event.spawnType != 0) return;
+		myServant = event;
+		if(100 * event.energy / event.energyMax < 60 && event.type == 1){
+			feedServant = true;
+		}
+	});
+	
+	mod.hook('S_REQUEST_DESPAWN_SERVANT', 1, event => {
+		if(!myServant || myServant.gameId != event.gameId || event.despawnType != 0) return;
+		myServant = null;
+	});
+	
+	mod.hook('S_UPDATE_SERVANT_INFO', 2, event => {
+		if(!myServant || myServant.dbid != event.dbid || myServant.id != event.id) return;
+		if(100 * event.energy / event.energyMax < 60 && event.type == 1){
+			feedServant = true;
+		}
+	});
+	
+
+	/*
+	mod.hook('S_VIEW_WARE_EX', 1, event => {
+		if (!mod.settings.enabled || !mod.game.me.is(event.gameId)) return;
+		
+		wareExtend = event;
+	});
+	
+	function startGettingBait() {
+		if (!myServant) {
+			mod.setTimeout(startSpawning, 5000);
+		} else {
+			mod.setTimeout(startGetWare, 5000);
+		}
+	}
+	
+	function startSpawning() {
+		if (log) MSG.chat(MSG.RED("------开启[自动召唤]系统------"));
+		spawning = true;
+		mod.send('C_REQUEST_SERVANT_INFO_LIST', 1, {
+			gameId: mod.game.me.gameId
+		});
+	}
+	
+	function startGetWare() {
+		if (log) MSG.chat(MSG.RED("------开启[个人仓库]搜寻------[鱼饵]"));
+		mod.send('C_SERVANT_ABILITY', 1, {
+			gameId: myServant.gameId,
+			skill: myServant.abilities.find(obj => (obj.id == 22 || obj.id == 23)).id
+		});
+		
+		mod.setTimeout(startGetWareItem, 5000);
+	}
+	
+	function startGetWareItem() {
+		var baitIDs = [];
+		for (let item of CRAFTABLE_BAITS) {
+			baitIDs.push(item.itemId);
+		}
+		
+		var scanningBait;
+		
+		for (let baitID of baitIDs) {
+			if (scanningBait = wareExtend.items.find(item => item.id == baitID)) break;
+		}
+		
+		if (scanningBait) {
+			var maxGetBaitAmount = CRAFTABLE_BAITS.find(obj => obj.itemId == scanningBait.id).maxAmount;
+			mod.send('C_GET_WARE_ITEM', 3, {
+				gameId: mod.game.me.gameId,
+				type: wareExtend.type,
+				page: wareExtend.offset,
+				gold: 0,
+				bankSlot: scanningBait.amountTotal,
+				dbid: scanningBait.dbid,
+				id: scanningBait.id,
+				amont: ((scanningBait.amount < maxGetBaitAmount) ? scanningBait.amount : maxGetBaitAmount),
+				invenPocket: -1,
+				invenSlot: -1
+			});
+			MSG.chat(MSG.YEL("~提取鱼饵~ ") + "成功");
+			
+			mod.setTimeout(() => {
+				// MSG.chat(MSG.RED("------关闭[个人仓库]------"));
+				// mod.send('S_VIEW_WARE_EX', 1, {
+					// gameId: mod.game.me.gameId,
+					// action: 1
+				// });
+				
+				if (log) MSG.chat(MSG.YEL("~解除召唤~ ") + "宠物/伙伴");
+				mod.send('C_REQUEST_DESPAWN_SERVANT', 1, {});
+				
+				mod.setTimeout(activeBait, 5000);
+			}, 2000);
+			return;
+		} else if ((wareExtend.offset+72) < wareExtend.slots) {
+			if (log) MSG.chat(MSG.YEL("~切换分页~ ") + MSG.YEL("...重新搜寻"));
+			mod.send('C_VIEW_WARE', 2, {
+				gameId: mod.game.me.gameId,
+				type: 9,
+				offset: (wareExtend.offset+72)
+			});
+			
+			mod.setTimeout(startGetWareItem, 2000);
+		} else {
+			MSG.party("未找到[鱼饵], 已关闭自动[提取]功能!!!");
+			if (log) MSG.chat(MSG.YEL("~解除召唤~ ") + "宠物/伙伴");
+			mod.send('C_REQUEST_DESPAWN_SERVANT', 1, {});
+			mod.settings.autoGetting = false;
+			
+			mod.setTimeout(activeBait, 5000);
+		}
+	}
+	*/
 }
