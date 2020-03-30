@@ -695,7 +695,7 @@ module.exports = function TerableFishing(mod){
 		}
 	});
 
-    mod.hook('S_ITEMLIST', 2, event => {
+    mod.hook('S_ITEMLIST', 3, event => {
 		for (const item of event.items){
 			if(RODS.includes(item.id)){
 				if(fishingRod == null || fishingRod == 206700) fishingRod = item.id;
